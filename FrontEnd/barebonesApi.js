@@ -1,11 +1,3 @@
-FrontEnd design with React.js
-
-npm run dev 
-^^ To start fake db.json server with react server
-Db.json server in localhost:3001, react server in localhost:3000
-
-APIs
-
 //Submission API
 
 // Front end send to backend
@@ -32,6 +24,20 @@ APIs
 // Front end to backend
 {
     challenge: String
+    result: {
+        {
+            name: String,
+            id: String
+        },
+        {
+            name: String,
+            id: String
+        },
+        {
+            name: String,
+            id: String
+        }
+    }
 }
 
 //Backend to frontend
