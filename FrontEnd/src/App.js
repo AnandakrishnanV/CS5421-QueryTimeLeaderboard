@@ -4,6 +4,7 @@ import axios from "axios";
 import { useTable } from "react-table/dist/react-table.development";
 import {COLUMNS} from './components/ladderColumns'
 import './components/ladderColumns.css'
+import Navigation from "./components/Navigation/Navigation";
 
 export default function App() {
   const [sqlLadder, setSqlLadder] = useState([])
@@ -42,7 +43,7 @@ export default function App() {
 
   return (
     <div>
-      <h1>SQL ladder</h1>
+      <Navigation/>
       <nav
         style={{
           borderBottom: "solid 1px",
