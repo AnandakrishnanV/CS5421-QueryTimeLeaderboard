@@ -6,6 +6,7 @@ import { COLUMNS } from './components/ladderColumns'
 import './components/ladderColumns.css'
 import { GlobalFilter } from "./components/globalLadderFilter";
 
+import Navigation from "./components/Navigation/Navigation";
 
 export default function App() {
   const [sqlLadder, setSqlLadder] = useState([])
@@ -68,6 +69,7 @@ export default function App() {
         <Link to="/tasks">SQL Tasks</Link>
       </nav>
       <>
+      <Navigation/>      
       <GlobalFilter filter={globalFilter} setFilter={setGlobalFilter}/>
       <table {...getTableProps()}>
         <thead>
