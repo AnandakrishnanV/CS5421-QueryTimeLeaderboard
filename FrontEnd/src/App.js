@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 import {useEffect, useState, useMemo} from 'react'
 import axios from "axios";
-import { useTable } from "react-table/dist/react-table.development";
-import {COLUMNS} from './components/ladderColumns'
+import { useTable, useSortBy, useGlobalFilter, useFilters} from "react-table/dist/react-table.development";
+import { COLUMNS } from './components/ladderColumns'
 import './components/ladderColumns.css'
+import { GlobalFilter } from "./components/globalLadderFilter";
+
 
 export default function App() {
   const [sqlLadder, setSqlLadder] = useState([])
@@ -12,21 +14,31 @@ export default function App() {
 
     if(res){
       const queries = res.data
-      setSqlLadder(queries)
+      setSqlLadder(queries.map(query =>({
+        ...query,
+        total_time: query.execution_time + query.planning_time
+      })))
     }
     
   }
-
+  useEffect(()=> {
+    fetchLadder()
+  }, [])
   
   const columns = useMemo(() => COLUMNS, [])
 
   const ladderData = useMemo(() => [...sqlLadder], [sqlLadder])
   
   console.log(...ladderData)
+
   const tableInstance = useTable({
     columns,
     data: ladderData
-  })
+  },
+  useFilters,
+  useGlobalFilter,
+  useSortBy
+  )
   
   const{
     getTableProps,
@@ -34,11 +46,13 @@ export default function App() {
     headerGroups,
     rows,
     prepareRow,
+    state,
+    setGlobalFilter
   } = tableInstance
   
-  useEffect(()=> {
-    fetchLadder()
-  }, [])
+  
+
+  const {globalFilter} = state
 
   return (
     <div>
@@ -53,12 +67,20 @@ export default function App() {
         <Link to="/submission">SQL Submission</Link>|{" "}
         <Link to="/tasks">SQL Tasks</Link>
       </nav>
+      <>
+      <GlobalFilter filter={globalFilter} setFilter={setGlobalFilter}/>
       <table {...getTableProps()}>
         <thead>
           {headerGroups.map(headerGroup => (
             <tr {...headerGroup.getHeaderGroupProps()}>
               {headerGroup.headers.map(column => (
-                <th {...column.getHeaderProps()}>{column.render('Header')}</th>
+                <th {...column.getHeaderProps(column.getSortByToggleProps())}>
+                {column.render('Header')}
+                <span>
+                  {column.isSorted ? (column.isSortedDesc ? '⬇️' : '⬆️') : '↕'}
+                </span>
+                <div>{column.canFilter ? column.render('Filter'): null}</div>
+                </th>
               ))}
             </tr>
           ))}
@@ -75,16 +97,8 @@ export default function App() {
             )
           })}
         </tbody>
-        {/* <tfoot>
-          {footerGroups.map(footerGroup => (
-            <tr {...footerGroup.getFooterGroupProps()}>
-              {footerGroup.headers.map(column => (
-                <td {...column.getFooterProps()}>{column.render('Footer')}</td>
-              ))}
-            </tr>
-          ))}
-        </tfoot> */}
       </table>
+      </>
     </div>
   );
 }
