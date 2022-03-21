@@ -10,7 +10,7 @@ const Navigation = () => (
     <Nav className="nav">
       <Nav.Link href="/database">Database</Nav.Link>
       <Nav.Link href="/challenges">Challenges</Nav.Link>
-      <Nav.Link href="/challenge1">Challenge 1</Nav.Link>
+      <Nav.Link href="/controlcentre">Control Centre</Nav.Link>
     </Nav>
     </Container>
   </Navbar>

@@ -43,17 +43,7 @@ export default function App() {
 
   return (
     <div>
-      <Navigation/>
-      <nav
-        style={{
-          borderBottom: "solid 1px",
-          paddingBottom: "1rem",
-        }}
-      >
-        <Link to="/db">Our DB</Link> |{" "}
-        <Link to="/submission">SQL Submission</Link>|{" "}
-        <Link to="/tasks">SQL Tasks</Link>
-      </nav>
+      <Navigation/>      
       <table {...getTableProps()}>
         <thead>
           {headerGroups.map(headerGroup => (
