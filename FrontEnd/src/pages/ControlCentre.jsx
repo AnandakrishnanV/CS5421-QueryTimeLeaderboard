@@ -11,7 +11,6 @@ const ControlCentre = (props) => {
   const challenge2Text =
     "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.";
 
-
   const actualPassHash = "teachteampass";
   const [inpC1Challenge, setC1IinpChallenge] = useState("");
   const [inpC2Challenge, setC2IinpChallenge] = useState("");
@@ -24,7 +23,7 @@ const ControlCentre = (props) => {
     const submitData = {
       challengeID: 1,
       challengeText: inpC1Challenge,
-      timestamp:Math.floor(Date.now()/1000)
+      timestamp: Math.floor(Date.now() / 1000),
     };
     //props.onSaveChallengeData(submitData); //passing data UP
     setC1IinpChallenge("");
@@ -40,7 +39,7 @@ const ControlCentre = (props) => {
     const submitData = {
       challengeID: 2,
       challengeText: inpC2Challenge,
-      timestamp:Math.floor(Date.now()/1000)
+      timestamp: Math.floor(Date.now() / 1000),
     };
     //props.onSaveChallengeData(submitData); //passing data UP
     setC2IinpChallenge("");
@@ -87,21 +86,39 @@ const ControlCentre = (props) => {
       <div>
         <Navigation />
         <div className="challenge-forms">
-          <Form className="cc-pass-form challenge-form" onSubmit={submitC1Handler} id="Form1">
+          <Form
+            className="cc-pass-form challenge-form"
+            onSubmit={submitC1Handler}
+            id="Form1"
+          >
             <Form.Group className="mb-3">
               <h3>Current Challenge - Fastest Time</h3>
               <Form.Label>{challenge1Text}</Form.Label>
-              <Form.Control as="textarea" rows={4} onChange={c1ChangeHandler} />
+              <Form.Control
+                as="textarea"
+                rows={4}
+                value={inpC1Challenge}
+                onChange={c1ChangeHandler}
+              />
             </Form.Group>
             <div className="">
               <Button type="submit">Submit</Button>
             </div>
           </Form>
-          <Form className="cc-pass-form challenge-form" onSubmit={submitC2Handler} id="Form2">
+          <Form
+            className="cc-pass-form challenge-form"
+            onSubmit={submitC2Handler}
+            id="Form2"
+          >
             <Form.Group className="mb-3">
               <h3>Current Challenge - Slowest Time</h3>
               <Form.Label>{challenge2Text}</Form.Label>
-              <Form.Control as="textarea" rows={4} onChange={c2ChangeHandler} />
+              <Form.Control
+                as="textarea"
+                rows={4}
+                value={inpC2Challenge}
+                onChange={c2ChangeHandler}
+              />
             </Form.Group>
             <div className="">
               <Button type="submit">Submit</Button>

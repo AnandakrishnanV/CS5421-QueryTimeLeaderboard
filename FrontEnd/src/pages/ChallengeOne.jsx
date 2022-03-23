@@ -7,7 +7,8 @@ const ChallengeOnePage = (props) => {
 
     const saveEntryDataHandler = (inpEntryData) => {
         const entryData = {
-            ...inpEntryData
+            ...inpEntryData,
+            challengeID: 1
         };
         console.log(entryData)
     }
