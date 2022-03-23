@@ -24,6 +24,7 @@ const ControlCentre = (props) => {
     const submitData = {
       challengeID: 1,
       challengeText: inpC1Challenge,
+      timestamp:Math.floor(Date.now()/1000)
     };
     //props.onSaveChallengeData(submitData); //passing data UP
     setC1IinpChallenge("");
@@ -39,6 +40,7 @@ const ControlCentre = (props) => {
     const submitData = {
       challengeID: 2,
       challengeText: inpC2Challenge,
+      timestamp:Math.floor(Date.now()/1000)
     };
     //props.onSaveChallengeData(submitData); //passing data UP
     setC2IinpChallenge("");

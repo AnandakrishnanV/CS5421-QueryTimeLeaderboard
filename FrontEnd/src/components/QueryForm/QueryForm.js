@@ -12,9 +12,11 @@ const QueryForm = (props) => {
     event.preventDefault(); //to stop req sent to anywhere, prompting refresh
 
     const submitData = {
-      SID: inpSID,
-      Name: inpName,
-      Query: inpQuery,
+      sid: inpSID,
+      name: inpName,
+      query: inpQuery,
+      timestamp:Math.floor(Date.now()/1000)
+
     };
 
     props.onSaveQueryData(submitData); //passing data UP
