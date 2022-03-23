@@ -8,8 +8,8 @@ const Navigation = () => (
     <Container>
     <Navbar.Brand href="#home">QueryTime Leaderboard</Navbar.Brand>
     <Nav className="nav">
-      <Nav.Link href="/database">Database</Nav.Link>
-      <Nav.Link href="/challenges">Challenges</Nav.Link>
+      <Nav.Link href="/challengeOne">ChallengeOne</Nav.Link>
+      <Nav.Link href="/challengeTwo">ChallengeTwo</Nav.Link>
       <Nav.Link href="/controlcentre">Control Centre</Nav.Link>
     </Nav>
     </Container>
