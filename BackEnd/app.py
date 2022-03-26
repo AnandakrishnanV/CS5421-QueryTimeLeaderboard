@@ -85,7 +85,7 @@ def benchmark_query(baseline_query: str, query: str, submission_id):
     result = None
     try:
         diff_query = DIFF_QUERY_TEMPLATE.format(baseline_query, query, query, baseline_query)
-        conn = get_db_connection(host='localhost', database='tuning', user='test', password='test',
+        conn = get_db_connection(host='localhost', database='tuning', user='read_user', password='read_user',
                                  timeout=BENCHMARK_TIMEOUT*2, readonly=True)
         cur = execute_query(db_conn=conn, query=diff_query)
         result = cur.fetchall()[0][0]
