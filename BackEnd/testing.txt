@@ -12,6 +12,12 @@ curl http://127.0.0.1:5000/challenges/ch_47bfe79c-cbe6-47ae-8381-139eced3e19f
 
 
 
+// run a redis through docker
+docker run \
+    -e ALLOW_EMPTY_PASSWORD=yes -p 6379:6379 \
+    -v /c/Users/USER/Desktop/redis:/bitnami/redis/data \
+    bitnami/redis:latest
+
 // cd into the BackEnd directory first
 // flag -P solo is used only to handle incompatibility with Windows, can drop this flag when using Linux
 celery -A app.celery worker --loglevel=INFO --concurrency 1 -P solo
