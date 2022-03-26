@@ -21,3 +21,6 @@ docker run \
 // cd into the BackEnd directory first
 // flag -P solo is used only to handle incompatibility with Windows, can drop this flag when using Linux
 celery -A app.celery worker --loglevel=INFO --concurrency 1 -P solo
+
+
+
