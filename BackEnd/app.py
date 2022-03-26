@@ -27,7 +27,7 @@ celery = Celery(app.name, broker=app.config['celery_broker_url'], backend=app.co
 celery.conf.update(app.config)
 
 # should use a different database server
-BENCHMARK_TIMEOUT = 1
+BENCHMARK_TIMEOUT = 5000
 
 challenge_parser = reqparse.RequestParser()
 challenge_parser.add_argument('user_name', type=str, required=True, help="User name cannot be blank!")
