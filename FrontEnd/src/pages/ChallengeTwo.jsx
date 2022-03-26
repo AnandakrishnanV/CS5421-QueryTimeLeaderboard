@@ -20,7 +20,7 @@ const ChallengeTwoPage = (props) => {
             <Navigation />
             <div className="text-center">
                 <p />
-                <h1>Challenge One - Slowest Query</h1>
+                <h1>Challenge Two - Slowest Query</h1>
                 <div className="challenge-text">
                     <span>{challengeText}</span>
                 </div>
