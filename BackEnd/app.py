@@ -87,11 +87,11 @@ def benchmark_query(baseline_query: str, query: str, submission_id: str):
         execution_time = int(float(explain_result[-1][0].replace('Execution Time: ', '').replace(' ms', '')) * 1000)
         cur.execute(f"UPDATE submission SET is_correct = {is_correct}, updated_at = '{dt}', planning_time = {planning_time}, execution_time = {execution_time} WHERE submission_id = '{submission_id}'")
     except (Exception, Error) as error:
-        print(f'Update benchmark result failed, error: {error}')
+        logger.warning(f'Update benchmark result failed, error: {error}')
         return
     submission_conn.commit()
     count = cur.rowcount
-    print(f"{count} records successfully updated for submission table")
+    logger.info(f"{count} records successfully updated for submission table")
     cur.close()
 
 
