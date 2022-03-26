@@ -1,10 +1,12 @@
+from abc import ABC
+
 import celery
 from db_client import get_db_connection
 from db_client import execute_query
 from datetime import datetime, timezone
 
 
-class BenchMarkTask(celery.Task):
+class BenchMarkTask(celery.Task, ABC):
 
     def on_retry(self, exc, task_id, args, kwargs, einfo):
         # exc (Exception) - The exception raised by the task.
