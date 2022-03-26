@@ -8,12 +8,12 @@ from flask_restful import reqparse, Resource, Api, abort
 from psycopg2 import Error
 from celery import Celery
 from db_client import get_db_connection, execute_query
-from util import RetryableError, BenchMarkTask
+from util import RetryableError, BenchMarkTask, process_error, NonRetryableError
 
 # TODO: receive configs and credentials via command line arguments or environment variables
 
 
-# create readonly user for executing benchmarking queries to avoid injection
+# create readonly user or grant only select permission for executing benchmarking queries to avoid injection
 # write permission is given to admin users like the professor or TAs
 
 app = Flask(__name__)
@@ -27,7 +27,7 @@ celery = Celery(app.name, broker=app.config['celery_broker_url'], backend=app.co
 celery.conf.update(app.config)
 
 # should use a different database server
-BENCHMARK_TIMEOUT = 5000
+BENCHMARK_TIMEOUT = 1
 
 challenge_parser = reqparse.RequestParser()
 challenge_parser.add_argument('user_name', type=str, required=True, help="User name cannot be blank!")
@@ -49,11 +49,11 @@ def validate_sql_syntax(query: str):
     return True
 
 
-@celery.task(throws=(RetryableError,), autoretry_for=(RetryableError,), retry_backoff=True, max_retries=10, base=BenchMarkTask)
+@celery.task(throws=(RetryableError,NonRetryableError), autoretry_for=(RetryableError,), retry_backoff=True, max_retries=10, base=BenchMarkTask)
 def benchmark_query(baseline_query: str, query: str, submission_id):
     explain_result = None
     try:
-        conn = get_db_connection(host='localhost', database='tuning', user='test', password='test',
+        conn = get_db_connection(host='localhost', database='tuning', user='read_user', password='read_user',
                                  timeout=BENCHMARK_TIMEOUT, readonly=True)
         cur = execute_query(db_conn=conn, query=f"EXPLAIN ANALYZE {query}")
         explain_result = cur.fetchall()
@@ -77,10 +77,10 @@ def benchmark_query(baseline_query: str, query: str, submission_id):
                 logger.info(f"{count} records successfully updated for submission table on benchmarking timeout")
             except (Exception, Error) as error:
                 logger.warning(f'Update benchmark result failed, error: {error}')
-                raise RetryableError(error)
+                raise process_error(error)
             return
         else:
-            raise RetryableError(error)
+            raise process_error(error)
 
     result = None
     try:
@@ -95,7 +95,7 @@ def benchmark_query(baseline_query: str, query: str, submission_id):
         logger.info(f'Benchmark query correctness: {correctness}')
     except (Exception, Error) as error:
         logger.warning(f'Benchmark diff query failed, error: {error}')
-        raise RetryableError(error)
+        raise process_error(error)
 
     is_correct = result == 'Same'
     dt = datetime.now(timezone.utc)
@@ -111,7 +111,7 @@ def benchmark_query(baseline_query: str, query: str, submission_id):
         logger.info(f"{count} records successfully updated for submission table")
     except (Exception, Error) as error:
         logger.warning(f'Update benchmark result failed, error: {error}')
-        raise RetryableError(error)
+        raise process_error(error)
 
 
 class Submission(Resource):

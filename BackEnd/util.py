@@ -4,7 +4,8 @@ import celery
 from db_client import get_db_connection
 from db_client import execute_query
 from datetime import datetime, timezone
-
+from psycopg2 import ProgrammingError
+from psycopg2.errors import ReadOnlySqlTransaction, IntegrityError
 
 class BenchMarkTask(celery.Task, ABC):
 
@@ -40,9 +41,20 @@ class BenchMarkTask(celery.Task, ABC):
         return count
 
 
+def process_error(e):
+    if isinstance(e, ProgrammingError) or isinstance(e, ReadOnlySqlTransaction) or isinstance(e, IntegrityError):
+        return NonRetryableError(e)
+    else:
+        return RetryableError(e)
+
+
 class Error(Exception):
     pass
 
 
 class RetryableError(Error):
+    pass
+
+
+class NonRetryableError(Error):
     pass
