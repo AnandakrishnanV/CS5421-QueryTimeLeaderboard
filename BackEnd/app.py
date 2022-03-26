@@ -11,6 +11,8 @@ from psycopg2 import Error
 from celery import Celery
 from db_client import get_db_connection
 
+# TODO: receive configs and credentials via command line arguments or environment variables
+
 
 # create readonly user for executing benchmarking queries to avoid injection
 # write permission is given to admin users like the professor or TAs
@@ -59,7 +61,8 @@ def benchmark_query(baseline_query: str, query: str, submission_id: str):
     except (Exception, Error) as error:
         logger.warning(f'Benchmark query failed, error: {error}')
         if 'canceling statement due to statement timeout' in str(error):
-            logger.warning(f'Benchmark result maximum total time {BENCHMARK_TIMEOUT}ms for planning and execution reached')
+            logger.warning(
+                f'Benchmark result maximum total time {BENCHMARK_TIMEOUT}ms for planning and execution reached')
             return
 
     explain_result = cur.fetchall()
@@ -85,7 +88,8 @@ def benchmark_query(baseline_query: str, query: str, submission_id: str):
         dt = datetime.now(timezone.utc)
         planning_time = int(float(explain_result[-2][0].replace('Planning Time: ', '').replace(' ms', '')) * 1000)
         execution_time = int(float(explain_result[-1][0].replace('Execution Time: ', '').replace(' ms', '')) * 1000)
-        cur.execute(f"UPDATE submission SET is_correct = {is_correct}, updated_at = '{dt}', planning_time = {planning_time}, execution_time = {execution_time} WHERE submission_id = '{submission_id}'")
+        cur.execute(
+            f"UPDATE submission SET is_correct = {is_correct}, updated_at = '{dt}', planning_time = {planning_time}, execution_time = {execution_time} WHERE submission_id = '{submission_id}'")
     except (Exception, Error) as error:
         logger.warning(f'Update benchmark result failed, error: {error}')
         return
