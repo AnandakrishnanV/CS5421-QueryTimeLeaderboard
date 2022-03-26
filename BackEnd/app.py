@@ -1,33 +1,32 @@
 import uuid
 from datetime import datetime, timezone, date
 import sqlvalidator
+from celery.utils.log import get_task_logger
 
 import psycopg2
 import psycopg2.extras
 from flask import Flask
 from flask_restful import reqparse, Resource, Api, abort
 from psycopg2 import Error
+from celery import Celery
+from db_client import get_db_connection
 
 
-def get_db_connection(host: str, database: str, user: str, password: str, timeout: int = 5000):
-    options = f'-c statement_timeout={timeout}'
-    conn = psycopg2.connect(host=host,
-                            database=database,
-                            user=user,
-                            password=password, options=options)
-    return conn
-
+# create readonly user for executing benchmarking queries to avoid injection
+# write permission is given to admin users like the professor or TAs
 
 app = Flask(__name__)
 api = Api(app)
+logger = get_task_logger(__name__)
 
-submission_conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
-challenge_conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
+app.config['celery_broker_url'] = 'redis://localhost:6379'
+app.config['celery_result_backend'] = 'redis://localhost:6379'
+
+celery = Celery(app.name, broker=app.config['celery_broker_url'], backend=app.config['celery_result_backend'])
+celery.conf.update(app.config)
 
 # should use a different database server
 BENCHMARK_TIMEOUT = 5000
-benchmark_conn = get_db_connection(host='localhost', database='tuning', user='test', password='test',
-                                   timeout=BENCHMARK_TIMEOUT)
 
 challenge_parser = reqparse.RequestParser()
 challenge_parser.add_argument('user_name', type=str, required=True, help="User name cannot be blank!")
@@ -49,22 +48,22 @@ def validate_sql_syntax(query: str):
     return True
 
 
-# TODO: make this async using task queue or crontab
-def benchmark_query(baseline_query: str, query: str):
+@celery.task
+def benchmark_query(baseline_query: str, query: str, submission_id: str):
+    benchmark_conn = get_db_connection(host='localhost', database='tuning', user='test', password='test',
+                                       timeout=BENCHMARK_TIMEOUT, readonly=True)
     cur = benchmark_conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     explain_query = f"EXPLAIN ANALYZE {query}"
     try:
         cur.execute(explain_query)
     except (Exception, Error) as error:
-        print(f'Benchmark query failed, error: {error}')
+        logger.warning(f'Benchmark query failed, error: {error}')
         if 'canceling statement due to statement timeout' in str(error):
-            print(f'Benchmark result maximum total time {BENCHMARK_TIMEOUT}ms for planning and execution reached')
-            pass
+            logger.warning(f'Benchmark result maximum total time {BENCHMARK_TIMEOUT}ms for planning and execution reached')
             return
-        else:
-            return abort(500, message="Internal Server Error")
+
     explain_result = cur.fetchall()
-    print(f'Benchmark result, {explain_result[-2][0]}, {explain_result[-1][0]}')
+    logger.info(f'Benchmark result, {explain_result[-2][0]}, {explain_result[-1][0]}')
     cur.close()
 
     diff_query = DIFF_QUERY_TEMPLATE.format(baseline_query, query, query, baseline_query)
@@ -72,16 +71,33 @@ def benchmark_query(baseline_query: str, query: str):
     try:
         cur.execute(diff_query)
     except (Exception, Error) as error:
-        print(f'Benchmark diff query failed, error: {error}')
-        return abort(500, message="Internal Server Error")
+        logger.warning(f'Benchmark diff query failed, error: {error}')
+        return
     result = cur.fetchall()[0][0]
     cur.close()
     correctness = 'Correct' if result == 'Same' else 'Incorrect'
-    print(f'Benchmark query correctness: {correctness}')
+    logger.info(f'Benchmark query correctness: {correctness}')
+
+    submission_conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
+    cur = submission_conn.cursor()
+    try:
+        is_correct = result == 'Same'
+        dt = datetime.now(timezone.utc)
+        planning_time = int(float(explain_result[-2][0].replace('Planning Time: ', '').replace(' ms', '')) * 1000)
+        execution_time = int(float(explain_result[-1][0].replace('Execution Time: ', '').replace(' ms', '')) * 1000)
+        cur.execute(f"UPDATE submission SET is_correct = {is_correct}, updated_at = '{dt}', planning_time = {planning_time}, execution_time = {execution_time} WHERE submission_id = '{submission_id}'")
+    except (Exception, Error) as error:
+        print(f'Update benchmark result failed, error: {error}')
+        return
+    submission_conn.commit()
+    count = cur.rowcount
+    print(f"{count} records successfully updated for submission table")
+    cur.close()
 
 
 class Submission(Resource):
     def get(self, submission_id):
+        submission_conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
         cur = submission_conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
         submission_id = f"'{submission_id}'"
         try:
@@ -107,9 +123,12 @@ class Submission(Resource):
             return abort(400, message="Invalid Query Syntax")
         name = args['user_name']
         challenge_id = args['challenge_id']
+        challenge_conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
         # challenge id must be valid, i.e. a challenge with this id must exist
         challenge_cur = challenge_conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
         quoted_challenge_id = f"'{challenge_id}'"
+        submission_conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
+
         try:
             challenge_cur.execute(f'SELECT * FROM challenge WHERE challenge_id = {quoted_challenge_id}')
         except (Exception, Error) as error:
@@ -134,7 +153,8 @@ class Submission(Resource):
         count = cur.rowcount
         print(f"{count} records inserted successfully into submission table")
         cur.close()
-        benchmark_query(challenge['sql_query'], query)
+
+        benchmark_query.delay(challenge['sql_query'], query, submission_id)
         return {'user_name': name, 'query': query, 'submission_id': submission_id,
                 'time_stamp': dt.strftime("%m/%d/%Y, %H:%M:%S"), 'challengeId': challenge_id, 'planning_time': -1,
                 'execution_time': -1, 'is_correct': True}, 201
@@ -142,6 +162,7 @@ class Submission(Resource):
 
 class Challenge(Resource):
     def get(self, challenge_id):
+        challenge_conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
         cur = challenge_conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
         challenge_id = f"'{challenge_id}'"
         try:
@@ -163,6 +184,7 @@ class Challenge(Resource):
         if not validate_sql_syntax(query):
             return abort(400, message="Internal Query Syntax")
         name = args['user_name']
+        challenge_conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
         cur = challenge_conn.cursor()
         dt = datetime.now(timezone.utc)
         challenge_id = 'ch_' + str(uuid.uuid4())

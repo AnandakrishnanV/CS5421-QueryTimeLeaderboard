@@ -9,3 +9,9 @@ curl -X POST -H "Content-Type: application/json" \
 
 curl http://127.0.0.1:5000/submissions/sub_41d0a0c7-1539-466a-a9db-ba004dffaaf6
 curl http://127.0.0.1:5000/challenges/ch_47bfe79c-cbe6-47ae-8381-139eced3e19f
+
+
+
+// cd into the BackEnd directory first
+// flag -P solo is used only to handle incompatibility with Windows, can drop this flag when using Linux
+celery -A app.celery worker --loglevel=INFO --concurrency 1 -P solo
