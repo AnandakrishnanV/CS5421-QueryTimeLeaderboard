@@ -23,7 +23,7 @@
 `curl http://127.0.0.1:5000/challenges` \
 `curl http://127.0.0.1:5000/challenges?user_name=xxx`
 #### Retrieve a Challenge
-**GET \challenge\<challenge_id>** \
+**GET \challenge\\<challenge_id>** \
 `curl http://127.0.0.1:5000/challenge/ch_xxx`
 ### Submission API
 #### Create a Submission
@@ -36,5 +36,5 @@
 `curl http://127.0.0.1:5000/submissions` \
 `curl http://127.0.0.1:5000/submissions?user_name=xxx`
 #### Retrieve a Submission
-**GET \submission\<submission_id>** \
+**GET \submission\\<submission_id>** \
 `curl http://127.0.0.1:5000/submission/sub_xxx`
