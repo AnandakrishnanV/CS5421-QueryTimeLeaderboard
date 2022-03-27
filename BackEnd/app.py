@@ -129,7 +129,8 @@ class Submission(Resource):
                     'submission_id': submission_id,
                     'timestamp': submission['created_at'].strftime("%m/%d/%Y, %H:%M:%S"),
                     'challenge_id': submission['challenge_id'], 'planning_time': submission['planning_time'],
-                    'execution_time': submission['execution_time'], 'is_correct': submission['is_correct']}, 200
+                    'execution_time': submission['execution_time'], 'is_correct': submission['is_correct'],
+                    'error_message': submission['error_message'], 'retry_times': submission['retry_times']}, 200
         except (Exception, Error) as error:
             print(f'Submission query submission failed, error: {error}')
             return abort(400, message="Invalid Server Error")
