@@ -34,7 +34,6 @@ challenge_parser.add_argument('query', type=str, required=True, help="Query cann
 challenge_parser.add_argument('challenge_name', type=str, required=True, help="Challenge name cannot be blank!")
 challenge_parser.add_argument('challenge_type', type=int, required=True, help="Challenge type cannot be blank!")
 
-
 submission_parser = reqparse.RequestParser()
 submission_parser.add_argument('query', type=str, required=True, help="Query cannot be blank!")
 submission_parser.add_argument('user_name', type=str, required=True, help="User name cannot be blank!")
@@ -44,6 +43,11 @@ submission_list_parser = reqparse.RequestParser()
 submission_list_parser.add_argument('user_name', type=str)
 challenge_list_parser = reqparse.RequestParser()
 challenge_list_parser.add_argument('user_name', type=str)
+
+challenge_type_parser = reqparse.RequestParser()
+challenge_type_parser.add_argument('user_name', type=str, required=True, help="User name cannot be blank!")
+challenge_type_parser.add_argument('description', type=str, required=True, help="Description cannot be blank!")
+challenge_type_parser.add_argument('challenge_type', type=str, required=True, help="Challenge type cannot be blank!")
 
 DIFF_QUERY_TEMPLATE = '''SELECT CASE WHEN COUNT(*) = 0 THEN 'Same' ELSE 'Different' END FROM (({} EXCEPT {}) UNION ({} EXCEPT {})) AS RESULT'''
 
@@ -121,7 +125,7 @@ class SubmissionList(Resource):
         args = submission_list_parser.parse_args()
         user_name = args['user_name']
         try:
-            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
+            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test', readonly=True)
             cur = execute_query(db_conn=conn, query='SELECT * FROM submission WHERE user_name = %s',
                                 values=(user_name,)) if user_name else execute_query(db_conn=conn,
                                                                                      query='SELECT * FROM submission')
@@ -141,7 +145,7 @@ class SubmissionList(Resource):
                                     'retry_times': submission['retry_times']})
             return submissions, 200
         except (Exception, Error) as error:
-            print(f'SubmissionList query failed, error: {error}')
+            print(f'Submission list query failed, error: {error}')
             return abort(400, message="Invalid Server Error")
 
     def post(self):
@@ -190,7 +194,7 @@ class SubmissionList(Resource):
 class Submission(Resource):
     def get(self, submission_id):
         try:
-            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
+            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test', readonly=True)
             cur = execute_query(db_conn=conn, query='SELECT * FROM submission WHERE submission_id = %s',
                                 values=(submission_id,))
             submission = cur.fetchone()
@@ -214,7 +218,7 @@ class ChallengeList(Resource):
         args = challenge_list_parser.parse_args()
         user_name = args['user_name']
         try:
-            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
+            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test', readonly=True)
             cur = execute_query(db_conn=conn, query='SELECT * FROM challenge WHERE user_name = %s',
                                 values=(user_name,)) if user_name else execute_query(db_conn=conn,
                                                                                      query='SELECT * FROM challenge')
@@ -230,7 +234,7 @@ class ChallengeList(Resource):
                                    'timestamp': challenge['updated_at'].strftime("%m/%d/%Y, %H:%M:%S")})
             return challenges, 200
         except (Exception, Error) as error:
-            print(f'ChallengeList query failed, error: {error}')
+            print(f'Challenge list query failed, error: {error}')
             return abort(500, message="Internal Server Error")
 
     def post(self):
@@ -264,9 +268,8 @@ class ChallengeList(Resource):
 
 class Challenge(Resource):
     def get(self, challenge_id):
-        challenge_id = f"'{challenge_id}'"
         try:
-            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
+            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test', readonly=True)
             cur = execute_query(db_conn=conn, query='SELECT * FROM challenge WHERE challenge_id = %s',
                                 values=(challenge_id,))
             challenge = cur.fetchone()
@@ -282,10 +285,72 @@ class Challenge(Resource):
             return abort(500, message="Internal Server Error")
 
 
+class ChallengeTypeList(Resource):
+    def get(self):
+        try:
+            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test', readonly=True)
+            cur = execute_query(db_conn=conn, query='SELECT * FROM challenge_type')
+            challenge_type_list = cur.fetchall()
+            cur.close()
+            conn.close()
+            challenge_types = []
+            for challenge_type in challenge_type_list:
+                challenge_types.append(
+                    {'user_name': challenge_type['user_name'], 'challenge_type': challenge_type['challenge_type'],
+                     'description': challenge_type["description"],
+                     'timestamp': challenge_type['updated_at'].strftime("%m/%d/%Y, %H:%M:%S")})
+            return challenge_types, 200
+        except (Exception, Error) as error:
+            print(f'Challenge type list query failed, error: {error}')
+            return abort(500, message="Internal Server Error")
+
+    def post(self):
+        args = challenge_type_parser.parse_args()
+        challenge_type = args['challenge_type']
+        description = args['description'].strip()
+        name = args['user_name']
+        try:
+            dt = datetime.now(timezone.utc)
+            prepared_query = """ INSERT INTO challenge_type (user_name, created_at, updated_at, challenge_type, description) VALUES (%s, %s, %s, %s, %s)"""
+            record = (name, dt, dt, challenge_type, description)
+            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
+            cur = execute_query(db_conn=conn, query=prepared_query, values=record)
+            count = cur.rowcount
+            print(f"{count} records inserted successfully into challenge type table")
+            cur.close()
+            conn.close()
+        except (Exception, Error) as error:
+            print('Challenge type insertion failed, error:', error)
+            return abort(500, message="Internal Server Error")
+        return {'user_name': name, 'challenge_type': challenge_type,
+                'description': description,
+                'time_stamp': dt.strftime("%m/%d/%Y, %H:%M:%S")}, 201
+
+class ChallengeType(Resource):
+    def get(self, challenge_type):
+        try:
+            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test', readonly=True)
+            cur = execute_query(db_conn=conn, query='SELECT * FROM challenge_type WHERE challenge_type = %s',
+                                values=(challenge_type,))
+            record = cur.fetchone()
+            cur.close()
+            conn.close()
+            if not record:
+                return abort(404, message=f"Challenge type {challenge_type} doesn't exist")
+            return {'user_name': record['user_name'], 'challenge_type': record['challenge_type'],
+                    'description': record["description"],
+                    'timestamp': record['updated_at'].strftime("%m/%d/%Y, %H:%M:%S")}, 200
+        except (Exception, Error) as error:
+            print(f'Challenge type query failed, error: {error}')
+            return abort(500, message="Internal Server Error")
+
+
 api.add_resource(Submission, '/submission/<submission_id>')
 api.add_resource(SubmissionList, '/submissions')
 api.add_resource(Challenge, '/challenge/<challenge_id>')
 api.add_resource(ChallengeList, '/challenges')
+api.add_resource(ChallengeType, '/challenge_type/<challenge_type>')
+api.add_resource(ChallengeTypeList, '/challenge_types')
 
 if __name__ == '__main__':
     app.run(debug=True)
