@@ -13,6 +13,18 @@
 
 ## Routes & Testing
 ### Challenge API
+### Challenge Type API
+#### Create a Challenge Type
+**POST \challenge_types** \
+`curl -X POST -H "Content-Type: application/json" \
+    -d '{"challenge_type": 3, "description": "correct query", "user_name": "ta"}' \
+    http://127.0.0.1:5000/challenge_types`
+#### Retrieve a List of Challenge Types
+**GET \challenge_types** \
+`curl http://127.0.0.1:5000/challenge_types`
+#### Retrieve a Challenge Type
+**GET \challenge_type\\<challenge_type>** \
+`curl http://127.0.0.1:5000/challenge_types/1`
 #### Create a Challenge
 **POST \challenges** \
 `curl -X POST -H "Content-Type: application/json" \
@@ -38,15 +50,3 @@
 #### Retrieve a Submission
 **GET \submission\\<submission_id>** \
 `curl http://127.0.0.1:5000/submission/sub_xxx`
-### Submission API
-#### Create a Challenge Type
-**POST \challenge_types** \
-`curl -X POST -H "Content-Type: application/json" \
-    -d '{"challenge_type": 3, "description": "correct query", "user_name": "ta"}' \
-    http://127.0.0.1:5000/challenge_types`
-#### Retrieve a List of Challenge Types
-**GET \challenge_types** \
-`curl http://127.0.0.1:5000/challenge_types`
-#### Retrieve a Challenge Type
-**GET \challenge_type\\<challenge_type>** \
-`curl http://127.0.0.1:5000/challenge_types/1`
