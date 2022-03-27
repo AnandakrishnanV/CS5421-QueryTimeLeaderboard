@@ -97,8 +97,8 @@ def benchmark_query(baseline_query: str, query: str, submission_id):
 
     is_correct = result == 'Same'
     dt = datetime.now(timezone.utc)
-    planning_time = int(float(explain_result[-2][0].replace('Planning Time: ', '').replace(' ms', '')) * 1000)
-    execution_time = int(float(explain_result[-1][0].replace('Execution Time: ', '').replace(' ms', '')) * 1000)
+    planning_time = explain_result[-2][0].replace('Planning Time: ', '').replace(' ms', '')
+    execution_time = explain_result[-1][0].replace('Execution Time: ', '').replace(' ms', '')
     try:
         conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
         cur = execute_query(db_conn=conn,
@@ -131,8 +131,8 @@ class SubmissionList(Resource):
                                     'submission_id': submission['submission_id'],
                                     'timestamp': submission['updated_at'].strftime("%m/%d/%Y, %H:%M:%S"),
                                     'challenge_id': submission['challenge_id'],
-                                    'planning_time': submission['planning_time'],
-                                    'execution_time': submission['execution_time'],
+                                    'planning_time': float(submission['planning_time']),
+                                    'execution_time': float(submission['execution_time']),
                                     'is_correct': submission['is_correct'],
                                     'error_message': submission['error_message'],
                                     'retry_times': submission['retry_times']})
@@ -198,8 +198,8 @@ class Submission(Resource):
             return {'user_name': submission['user_name'], 'query': submission['sql_query'],
                     'submission_id': submission_id,
                     'timestamp': submission['updated_at'].strftime("%m/%d/%Y, %H:%M:%S"),
-                    'challenge_id': submission['challenge_id'], 'planning_time': submission['planning_time'],
-                    'execution_time': submission['execution_time'], 'is_correct': submission['is_correct'],
+                    'challenge_id': submission['challenge_id'], 'planning_time': float(submission['planning_time']),
+                    'execution_time': float(submission['execution_time']), 'is_correct': submission['is_correct'],
                     'error_message': submission['error_message'], 'retry_times': submission['retry_times']}, 200
         except (Exception, Error) as error:
             print(f'Submission query submission failed, error: {error}')

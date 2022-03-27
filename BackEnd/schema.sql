@@ -1,14 +1,14 @@
 CREATE TABLE submission (
-  challenge_id VARCHAR NOT NULL,
-  submission_id VARCHAR PRIMARY KEY,
-  user_name VARCHAR NOT NULL,
+  challenge_id varchar NOT NULL,
+  submission_id varchar PRIMARY KEY,
+  user_name varchar NOT NULL,
   created_at timestamp,
   updated_at timestamp,
   sql_query TEXT,
-  execution_time int NOT NULL DEFAULT 0,
-  planning_time int NOT NULL DEFAULT 0,
+  execution_time decimal NOT NULL DEFAULT 0,
+  planning_time decimal NOT NULL DEFAULT 0,
   is_correct boolean NOT NULL DEFAULT FALSE,
-  error_message VARCHAR NOT NULL DEFAULT '',
+  error_message varchar NOT NULL DEFAULT '',
   retry_times int DEFAULT 0,
   CONSTRAINT fk_challenge
       FOREIGN KEY(challenge_id)
@@ -16,8 +16,8 @@ CREATE TABLE submission (
 );
 
 CREATE TABLE challenge (
-  challenge_id VARCHAR PRIMARY KEY,
-  user_name VARCHAR NOT NULL,
+  challenge_id varchar PRIMARY KEY,
+  user_name varchar NOT NULL,
   created_at timestamp,
   updated_at timestamp,
   sql_query TEXT
