@@ -18,9 +18,20 @@ CREATE TABLE submission (
 CREATE TABLE challenge (
   challenge_id varchar PRIMARY KEY,
   user_name varchar NOT NULL,
+  challenge_name varchar NOT NULL,
+  challenge_type smallint NOT NULL,
   created_at timestamp,
   updated_at timestamp,
-  sql_query TEXT
+  sql_query TEXT,
+  CONSTRAINT fk_challenge_type
+      FOREIGN KEY(challenge_type)
+	  REFERENCES challenge_type(challenge_type)
+);
+
+CREATE TABLE challenge_type (
+    challenge_type smallint PRIMARY KEY,
+    description varchar NOT NULL DEFAULT '',
+    user_name varchar NOT NULL DEFAULT ''
 );
 
 -- grant all permission to a user
