@@ -34,6 +34,12 @@ CREATE TABLE challenge_type (
     user_name varchar NOT NULL DEFAULT ''
 );
 
+-- insert challenge types, can be done offline
+INSERT INTO challenge_type(challenge_type, description, user_name)
+VALUES
+(1, 'Slowest Query', 'professor'),
+(2, 'Fastest Query', 'teaching assistant');
+
 -- grant all permission to a user
 GRANT ALL
 ON submission
