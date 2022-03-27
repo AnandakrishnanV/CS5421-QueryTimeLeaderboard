@@ -1,4 +1,4 @@
-#Python Backend with Heroku integration
+# Python Backend with Heroku integration
 
 ## Setup
 1. Set up and run two independent `PostgreSQL` server instances, one for application data and the other one for running benchmarking. Set up the two databases according to `schema.sql` and create a set of users with appropriate privileges as needed.
