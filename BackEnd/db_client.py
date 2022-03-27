@@ -1,6 +1,7 @@
 import psycopg2
 from psycopg2 import Error
 import psycopg2.extras
+import sqlvalidator
 
 
 def get_db_connection(host: str, database: str, user: str, password: str, timeout: int = 5000,
@@ -26,4 +27,11 @@ def execute_query(db_conn, query, **kwargs):
         db_conn.close()
         raise error
     return cur
+
+def validate_sql_syntax(query: str):
+    sql_query = sqlvalidator.parse(query)
+    if not sql_query.is_valid():
+        print(f'invalid query: {query}, errors: {sql_query.errors}')
+        return False
+    return True
 

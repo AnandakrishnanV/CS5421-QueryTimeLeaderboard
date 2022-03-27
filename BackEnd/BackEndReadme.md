@@ -15,16 +15,23 @@
 ### Create a Challenge
 **POST \challenges** \
 `curl -X POST -H "Content-Type: application/json" \
-    -d '{"query": "select * from benchmarking;", "challenge_id": "ch_xxx", "user_name": "test"}' \
-    http://127.0.0.1:5000/submissions`
+    -d '{"query": "select * from test;", "user_name": "test"}' \
+    http://127.0.0.1:5000/challenges`
 ### Retrieve a Challenge
-**GET \submissions\<challenge_id>** \
-`curl http://127.0.0.1:5000/challenges/ch_xxx`
+**GET \challenge\<challenge_id>** \
+`curl http://127.0.0.1:5000/challenge/ch_xxx`
+### Retrieve a List of Challenges
+**GET \challenges** \
+`curl http://127.0.0.1:5000/challenges`
 ### Create a Submission
 **POST \submissions** \
 `curl -X POST -H "Content-Type: application/json" \
-    -d '{"query": "select * from test;", "user_name": "test"}' \
-    http://127.0.0.1:5000/challenges`
+    -d '{"query": "select * from benchmarking;", "challenge_id": "ch_xxx", "user_name": "test"}' \
+    http://127.0.0.1:5000/submissions`
 ### Retrieve a Submission
 **GET \submissions\<submission_id>** \
-`curl http://127.0.0.1:5000/submissions/sub_xxx`
+`curl http://127.0.0.1:5000/submission/sub_xxx`
+### Retrieve a List of Submissions
+**GET \submissions\<submission_id>** \
+`curl http://127.0.0.1:5000/submissions` \
+`curl http://127.0.0.1:5000/submissions?user_name=xxx`
