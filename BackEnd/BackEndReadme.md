@@ -19,7 +19,8 @@
     http://127.0.0.1:5000/challenges`
 ### Retrieve a Challenge
 **GET \challenge\<challenge_id>** \
-`curl http://127.0.0.1:5000/challenge/ch_xxx`
+`curl http://127.0.0.1:5000/challenge/ch_xxx` \
+`curl http://127.0.0.1:5000/challenge?user_name=xxx`
 ### Retrieve a List of Challenges
 **GET \challenges** \
 `curl http://127.0.0.1:5000/challenges`

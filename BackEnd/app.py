@@ -39,6 +39,8 @@ submission_parser.add_argument('challenge_id', type=str, required=True, help="Ch
 
 submission_list_parser = reqparse.RequestParser()
 submission_list_parser.add_argument('user_name', type=str)
+challenge_list_parser = reqparse.RequestParser()
+challenge_list_parser.add_argument('user_name', type=str)
 
 DIFF_QUERY_TEMPLATE = '''SELECT CASE WHEN COUNT(*) = 0 THEN 'Same' ELSE 'Different' END FROM (({} EXCEPT {}) UNION ({} EXCEPT {})) AS RESULT'''
 
@@ -206,20 +208,25 @@ class Submission(Resource):
 
 class ChallengeList(Resource):
     def get(self):
-        challenge_list = []
+        args = challenge_list_parser.parse_args()
+        user_name = args['user_name']
         try:
             conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
-            cur = execute_query(db_conn=conn, query='SELECT * FROM challenge')
+            cur = execute_query(db_conn=conn, query='SELECT * FROM challenge WHERE user_name = %s',
+                                values=(user_name,)) if user_name else execute_query(db_conn=conn,
+                                                                                     query='SELECT * FROM challenge')
             challenge_list = cur.fetchall()
             cur.close()
             conn.close()
+            challenges = []
+            for challenge in challenge_list:
+                challenges.append({'user_name': challenge['user_name'], 'query': challenge['sql_query'],
+                                   'challenge_id': challenge["challenge_id"],
+                                   'timestamp': challenge['updated_at'].strftime("%m/%d/%Y, %H:%M:%S")})
+            return challenges, 200
         except (Exception, Error) as error:
             print(f'ChallengeList query failed, error: {error}')
             return abort(500, message="Internal Server Error")
-        for c in challenge_list:
-            c['timestamp'] = c['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
-            c['query'] = c['sql_query']
-        return challenge_list, 200
 
     def post(self):
         args = challenge_parser.parse_args()
