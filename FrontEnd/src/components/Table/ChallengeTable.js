@@ -3,15 +3,16 @@ import axios from "axios";
 import { useTable, useSortBy, useGlobalFilter, useFilters} from "react-table/dist/react-table.development";
 import { COLUMNS } from './Columns/ChallengeColumns'
 import './Columns/ladderColumns.css'
+import './ChallengeTable.css'
 
-const ChallengeOneTable= () => {
+const ChallengeTable= ({challengeId}) => {
   const [sqlLadder, setSqlLadder] = useState([])
   const fetchLadder = async () => {
     const res = await axios.get("http://localhost:3001/query").catch(err => console.log(err))
 
     if(res){
       const queries = res.data
-      setSqlLadder(queries.filter(query=> query.challenge_id == 1).map(query => ( {
+      setSqlLadder(queries.filter(query=> query.challenge_id == challengeId).map(query => ( {
             ...query,
             total_time: query.execution_time + query.planning_time
             
@@ -49,16 +50,14 @@ const ChallengeOneTable= () => {
   
   
 
-  const {globalFilter} = state
-
   return ( 
-  <>
-    <table {...getTableProps()}>
+  <div  className="table-container" >
+    <table className="sticky-column" {...getTableProps()}>
       <thead>
         {headerGroups.map(headerGroup => (
           <tr {...headerGroup.getHeaderGroupProps()}>
             {headerGroup.headers.map(column => (
-              <th {...column.getHeaderProps(column.getSortByToggleProps())}>
+              <th  className="sticky-column" {...column.getHeaderProps(column.getSortByToggleProps())}>
               {column.render('Header')}
               <span>
                 {column.isSorted ? (column.isSortedDesc ? '⬇️' : '⬆️') : '↕'}
@@ -82,8 +81,8 @@ const ChallengeOneTable= () => {
         })}
       </tbody>
     </table>
-  </>
+  </div>
    );
 }
 
-export default ChallengeOneTable
+export default ChallengeTable

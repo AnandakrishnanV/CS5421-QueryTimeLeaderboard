@@ -21,6 +21,7 @@
   "scripts": {
     "start": "react-scripts start",
     "dev": "json-server --watch sql.json --port 3001 & npm start",
+    "dev2": "json-server --watch challengeData.json --port 3002 & npm start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

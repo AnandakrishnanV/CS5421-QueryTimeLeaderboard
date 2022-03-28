@@ -1,0 +1,13 @@
+.sticky-column {
+  position: -webkit-sticky; /* Safari */
+  position: sticky;
+  top: 0
+}
+
+.table-container {
+  border: 1px solid #eeccee;
+  max-height: 300px;
+  overflow-y: scroll;
+  width: 90%;
+  margin:auto;
+}
