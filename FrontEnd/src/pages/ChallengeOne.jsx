@@ -4,8 +4,8 @@ import QueryForm from "../components/QueryForm/QueryForm";
 import './ChallengeOne.css'
 
 const ChallengeOnePage = (props) => {
-
     const saveEntryDataHandler = (inpEntryData) => {
+        console.log(props.id)
         const entryData = {
             ...inpEntryData,
             challengeID: 1
@@ -17,7 +17,6 @@ const ChallengeOnePage = (props) => {
 
     return (
         <div>
-            <Navigation />
             <div className="text-center">
                 <p />
                 <h1>Challenge One - Fastest Query</h1>
