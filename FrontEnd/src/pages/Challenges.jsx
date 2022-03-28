@@ -1,6 +1,4 @@
 import React, { useState } from "react";
-import Navigation from "../components/Navigation/Navigation";
-import QueryForm from "../components/QueryForm/QueryForm";
 import { Table } from "react-bootstrap";
 import "./Challenges.css";
 

@@ -12,8 +12,8 @@ const Navigation = () => (
       <Link to="/">QueryTime Leaderboard</Link>
     </Navbar.Brand>
     <Nav className="nav">
+      <Link to="/challenges">Challenges  |</Link> 
       <Link to="/challengeOne">Challenge One  |</Link> 
-      <Link to="/challengeTwo">Challenge Two</Link>
       <Link to="/controlCenter">Control Center</Link>
     </Nav>
     </Container>

@@ -56,8 +56,7 @@ export default function App() {
   const {globalFilter} = state
 
   return (
-    <div>
-      <Navigation/>      
+    <div>   
       <GlobalFilter filter={globalFilter} setFilter={setGlobalFilter}/>
       <table {...getTableProps()}>
         <thead>

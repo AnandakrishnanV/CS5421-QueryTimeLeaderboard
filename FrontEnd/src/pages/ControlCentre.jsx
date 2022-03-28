@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import Navigation from "../components/Navigation/Navigation";
 import { Form, Button } from "react-bootstrap";
 import Challenges from "./Challenges";
+import axios from "axios";
+
 
 import "./ControlCentre.css";
 
@@ -21,8 +22,10 @@ const ControlCentre = (props) => {
       challengeID: inpChallengeType,
       challengeText: inpChallenge,
       challengeRes:  inpChallengeRes,
+      challengeType: inpChallengeType,
       timestamp: Math.floor(Date.now() / 1000),
     };
+    axios.post('url', submitData)
     //props.onSaveChallengeData(submitData); //passing data UP
     setInpChallenge("");
     setInpChallengeRes("");
