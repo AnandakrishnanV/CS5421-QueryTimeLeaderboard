@@ -1,47 +1,108 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Table } from "react-bootstrap";
 import "./Challenges.css";
+import axios from "axios";
+import { C_COL } from "../components/challengeColumns";
+import {
+  useTable,
+  useSortBy,
+  useGlobalFilter,
+  useFilters,
+} from "react-table/dist/react-table.development";
 
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
 const Challenges = () => {
-  // let nav = useNavigate();
+  let nav = useNavigate();
+  const handleRowClick = (event) => {
+    console.log(event.target.parentElement.firstChild.textContent);
+    let clickId = event.target.parentElement.firstChild.textContent;
+    var challenge = challengeData.filter((obj) => {
+      return obj.challenge_id === clickId;
+    });
+    console.log(challenge);
 
-  // const handleRowClick = () => {
-  //   console.log("click");
+    let path = "/challengeOne";
+    nav(path, { state: challenge[0] });
+  };
 
-  //   let path = "/challengeOne";
-  //   nav(path, {state:{id:1,name:'sabaoon'}});
-  // };
+  const [chalData, setChalData] = useState([]);
+  const fetchChalData = async () => {
+    const res = await axios
+      .get("http://localhost:3002/data")
+      .catch((err) => console.log(err));
+
+    if (res) {
+      const data = res.data;
+      setChalData(
+        data.map((item) => ({
+          ...item,
+        }))
+      );
+    }
+  };
+  useEffect(() => {
+    fetchChalData();
+  }, []);
+
+  const columns = useMemo(() => C_COL, []);
+  const challengeData = useMemo(() => [...chalData], [chalData]);
+
+  const tableInstance = useTable(
+    {
+      columns,
+      data: challengeData,
+    },
+    useFilters,
+    useGlobalFilter,
+    useSortBy
+  );
+
+  const {
+    getTableProps,
+    getTableBodyProps,
+    headerGroups,
+    rows,
+    prepareRow,
+    state,
+  } = tableInstance;
 
   return (
     <div>
-      <div>
-        <Table className="chal-table zui-table-rounded">
-          <thead className="chal-thead">
-            <tr>
-              <th>#</th>
-              <th>Challenge Name</th>
-              <th>Challenge Type</th>
-              <th>Date</th>
+      <table className="chal-table zui-table-rounded" {...getTableProps()}>
+        <thead className="chal-thead">
+          {headerGroups.map((headerGroup) => (
+            <tr {...headerGroup.getHeaderGroupProps()}>
+              {headerGroup.headers.map((column) => (
+                <th {...column.getHeaderProps(column.getSortByToggleProps())}>
+                  {column.render("Header")}
+                  <span>
+                    {column.isSorted
+                      ? column.isSortedDesc
+                        ? "⬇️"
+                        : "⬆️"
+                      : "↕"}
+                  </span>
+                </th>
+              ))}
             </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>1</td>
-              <td >Mark</td>
-              <td>Otto</td>
-              <td>@mdo</td>
-            </tr>
-            <tr>
-              <td>2</td>
-              <td>Jacob</td>
-              <td>Thornton</td>
-              <td>@fat</td>
-            </tr>
-          </tbody>
-        </Table>
-      </div>
+          ))}
+        </thead>
+        <tbody {...getTableBodyProps()}>
+          {rows.map((row) => {
+            prepareRow(row);
+            return (
+              <tr onClick={handleRowClick} {...row.getRowProps()}>
+                {row.cells.map((cell) => {
+                  return (
+                    <td {...cell.getCellProps()}>{cell.render("Cell")}</td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 };

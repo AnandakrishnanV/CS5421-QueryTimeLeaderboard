@@ -89,8 +89,8 @@ const ControlCentre = (props) => {
               <h3>Add New Challenge</h3>
               <Form.Label>Select Challenge Type</Form.Label>
               <Form.Select onChange={chalTypeChangeHandler}>
-                <option value="1">Fastest Query</option>
-                <option value="2">Slowest Query</option>
+                <option value="1">Slowest Query</option>
+                <option value="2">Fastest Query</option>
                 <option value="3">Query Correctness</option>
               </Form.Select>
               <Form.Label>Enter New Challenge Text</Form.Label>

@@ -1,21 +1,17 @@
-import { Navbar, Nav, Container } from 'react-bootstrap';
-import React from 'react';
-import PropTypes from 'prop-types';
-import './Navigation.css';
+import { Navbar, Nav, Container } from "react-bootstrap";
+import React from "react";
+import PropTypes from "prop-types";
+import "./Navigation.css";
 import { Link } from "react-router-dom";
 
-
 const Navigation = () => (
-  <Navbar bg="dark" variant="dark" className='navi'>
+  <Navbar bg="dark" variant="dark" className="navi">
     <Container>
-    <Navbar.Brand href="#home">
-      <Link to="/">QueryTime Leaderboard</Link>
-    </Navbar.Brand>
-    <Nav className="nav">
-      <Link to="/challenges">Challenges  |</Link> 
-      <Link to="/challengeOne">Challenge One  |</Link> 
-      <Link to="/controlCenter">Control Center</Link>
-    </Nav>
+      <Navbar.Brand href="/">QueryTime Leaderboard</Navbar.Brand>
+      <Nav className="nav">
+        <Link className="nav-link" to="/challenges">Challenges</Link>
+        <Link className="nav-link" to="/controlCenter">Control Center</Link>
+      </Nav>
     </Container>
   </Navbar>
 );
