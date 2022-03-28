@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Navigation from "../components/Navigation/Navigation";
 import QueryForm from "../components/QueryForm/QueryForm";
 import './ChallengeOne.css'
+import ChallengeOneTable from "../components/Table/ChallengeOneTable";
 
 const ChallengeOnePage = (props) => {
 
@@ -25,8 +26,7 @@ const ChallengeOnePage = (props) => {
                     <span>{challengeText}</span>
                 </div>
             </div>
-
-            <p className="font-italic">Insert Table here</p>
+            <ChallengeOneTable/>
             <QueryForm onSaveQueryData = {saveEntryDataHandler} />
         </div>
     )

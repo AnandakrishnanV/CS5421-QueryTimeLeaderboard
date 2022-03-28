@@ -13,7 +13,7 @@ const Navigation = () => (
     </Navbar.Brand>
     <Nav className="nav">
       <Link to="/challengeOne">Challenge One  |</Link> 
-      <Link to="/challengeTwo">Challenge Two</Link>
+      <Link to="/challengeTwo">Challenge Two |</Link>
       <Link to="/controlCenter">Control Center</Link>
     </Nav>
     </Container>

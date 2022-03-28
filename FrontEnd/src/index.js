@@ -2,7 +2,6 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import { render } from "react-dom";
 import { 
   HashRouter as Router,
-  BrowserRouter,
   Routes,
   Route
 } from "react-router-dom";
