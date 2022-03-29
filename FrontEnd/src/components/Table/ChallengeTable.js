@@ -52,7 +52,7 @@ const ChallengeTable= ({challengeId}) => {
 
   return ( 
   <div  className="table-container" >
-    <table className="sticky-column" {...getTableProps()}>
+    <table className="sticky-column ch-table" {...getTableProps()}>
       <thead>
         {headerGroups.map(headerGroup => (
           <tr {...headerGroup.getHeaderGroupProps()}>

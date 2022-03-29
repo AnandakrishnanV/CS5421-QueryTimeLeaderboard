@@ -7,12 +7,9 @@ import { Link } from "react-router-dom";
 const Navigation = () => (
   <Navbar bg="dark" variant="dark" className="navi">
     <Container>
-    <Navbar.Brand>
-      <Link className="nav-link" to="/">QueryTime Leaderboard</Link>
-    </Navbar.Brand>
+    <Navbar.Brand href="/">QueryTime Leaderboard</Navbar.Brand>
     <Nav className="nav">
-      <Link className="nav-link" to="/challengeOne">Challenge One  |</Link> 
-      <Link className="nav-link" to="/challengeTwo">Challenge Two |</Link>
+      <Link className="nav-link" to="/challenges">Challenges</Link> 
       <Link className="nav-link" to="/controlCenter">Control Center</Link>
     </Nav>
     </Container>
