@@ -21,16 +21,21 @@ const ControlCentre = (props) => {
     const submitData = {
       challengeID: inpChallengeType,
       challengeText: inpChallenge,
-      challengeRes:  inpChallengeRes,
+      query:  inpChallengeRes,
       challengeType: inpChallengeType,
       timestamp: Math.floor(Date.now() / 1000),
     };
-    axios.post('url', submitData)
+    sendRequestToServer(submitData);
     //props.onSaveChallengeData(submitData); //passing data UP
     setInpChallenge("");
     setInpChallengeRes("");
     setInpChallengeType("");
   };
+
+  const sendRequestToServer = async (data) => {
+    let json = JSON.stringify(data)
+    const res = await axios.post('http://127.0.0.1:5000/challenges', json);
+  }
 
   const chalTypeChangeHandler = (event) => {
     setInpChallengeType(event.target.value);

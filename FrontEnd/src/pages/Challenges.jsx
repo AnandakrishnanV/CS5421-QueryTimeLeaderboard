@@ -29,11 +29,12 @@ const Challenges = () => {
   const [chalData, setChalData] = useState([]);
   const fetchChalData = async () => {
     const res = await axios
-      .get("http://localhost:3002/data")
+      .get(" http://127.0.0.1:5000/challenges")
       .catch((err) => console.log(err));
 
     if (res) {
       const data = res.data;
+      console.log(data);
       setChalData(
         data.map((item) => ({
           ...item,
@@ -47,6 +48,7 @@ const Challenges = () => {
 
   const columns = useMemo(() => C_COL, []);
   const challengeData = useMemo(() => [...chalData], [chalData]);
+  console.log(challengeData);
 
   const tableInstance = useTable(
     {

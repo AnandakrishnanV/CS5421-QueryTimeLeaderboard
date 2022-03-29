@@ -14,6 +14,6 @@ export const C_COL = [
     },
     {
         Header: "Date",
-        accessor: 'challenge_date'
+        accessor: 'timestamp'
     }
 ]
