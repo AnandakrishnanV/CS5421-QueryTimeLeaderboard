@@ -33,6 +33,7 @@ challenge_parser.add_argument('user_name', type=str, required=True, help="User n
 challenge_parser.add_argument('query', type=str, required=True, help="Query cannot be blank!")
 challenge_parser.add_argument('challenge_name', type=str, required=True, help="Challenge name cannot be blank!")
 challenge_parser.add_argument('challenge_type', type=int, required=True, help="Challenge type cannot be blank!")
+challenge_parser.add_argument('challenge_description', type=str, required=True, help="Challenge description cannot be blank!")
 
 submission_parser = reqparse.RequestParser()
 submission_parser.add_argument('query', type=str, required=True, help="Query cannot be blank!")
@@ -227,11 +228,26 @@ class ChallengeList(Resource):
             conn.close()
             challenges = []
             for challenge in challenge_list:
-                challenges.append({'user_name': challenge['user_name'], 'query': challenge['sql_query'],
-                                   'challenge_id': challenge["challenge_id"],
-                                   'challenge_name': challenge["challenge_name"],
-                                   'challenge_type': challenge["challenge_type"],
-                                   'timestamp': challenge['updated_at'].strftime("%m/%d/%Y, %H:%M:%S")})
+                try:
+                    type_conn = get_db_connection(host='localhost', database='tuning', user='test', password='test',
+                                                  readonly=True)
+                    type_cur = execute_query(db_conn=type_conn,
+                                             query='SELECT * FROM challenge_type WHERE challenge_type = %s',
+                                             values=(challenge["challenge_type"],))
+                    challenge_type = type_cur.fetchone()
+                    type_cur.close()
+                    type_conn.close()
+                    challenges.append({'user_name': challenge['user_name'], 'query': challenge['sql_query'],
+                                       'challenge_id': challenge["challenge_id"],
+                                       'challenge_name': challenge["challenge_name"],
+                                       'challenge_type': challenge["challenge_type"],
+                                       'challenge_description': challenge["description"],
+                                       'challenge_type_description': challenge_type["description"],
+                                       'timestamp': challenge['updated_at'].strftime("%m/%d/%Y, %H:%M:%S")})
+
+                except (Exception, Error) as error:
+                    print(f'Challenge list query challenge type failed, error: {error}')
+                    return abort(500, message="Internal Server Error")
             return challenges, 200
         except (Exception, Error) as error:
             print(f'Challenge list query failed, error: {error}')
@@ -242,6 +258,7 @@ class ChallengeList(Resource):
         query = args['query'].replace(';', '').lower().strip()
         challenge_name = args['challenge_name'].strip()
         challenge_type = args['challenge_type']
+        challenge_description = args['challenge_description']
         if not query.startswith('select'):
             return abort(400, message="Only Select Query Allowed")
         if not validate_sql_syntax(query):
@@ -250,8 +267,8 @@ class ChallengeList(Resource):
         try:
             dt = datetime.now(timezone.utc)
             challenge_id = 'ch_' + str(uuid.uuid4())
-            prepared_query = """ INSERT INTO challenge (user_name, created_at, updated_at, challenge_id, challenge_name, challenge_type, sql_query) VALUES (%s, %s, %s, %s, %s, %s, %s)"""
-            record = (name, dt, dt, challenge_id, challenge_name, challenge_type, query)
+            prepared_query = """ INSERT INTO challenge (user_name, created_at, updated_at, challenge_id, challenge_name, challenge_type, description, sql_query) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
+            record = (name, dt, dt, challenge_id, challenge_name, challenge_type, challenge_description, query)
             conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
             cur = execute_query(db_conn=conn, query=prepared_query, values=record)
             count = cur.rowcount
@@ -263,6 +280,7 @@ class ChallengeList(Resource):
             return abort(500, message="Internal Server Error")
         return {'user_name': name, 'query': query, 'challenge_id': challenge_id,
                 'challenge_name': challenge_name, 'challenge_type': challenge_type,
+                'challenge_description': challenge_description,
                 'time_stamp': dt.strftime("%m/%d/%Y, %H:%M:%S")}, 201
 
 
@@ -277,9 +295,24 @@ class Challenge(Resource):
             conn.close()
             if not challenge:
                 return abort(404, message=f"Challenge {challenge_id} doesn't exist")
-            return {'user_name': challenge['user_name'], 'query': challenge['sql_query'], 'challenge_id': challenge_id,
-                    'challenge_name': challenge["challenge_name"], 'challenge_type': challenge["challenge_type"],
-                    'timestamp': challenge['updated_at'].strftime("%m/%d/%Y, %H:%M:%S")}, 200
+            try:
+                type_conn = get_db_connection(host='localhost', database='tuning', user='test', password='test',
+                                              readonly=True)
+                type_cur = execute_query(db_conn=type_conn,
+                                         query='SELECT * FROM challenge_type WHERE challenge_type = %s',
+                                         values=(challenge["challenge_type"],))
+                challenge_type = type_cur.fetchone()
+                type_cur.close()
+                type_conn.close()
+                return {'user_name': challenge['user_name'], 'query': challenge['sql_query'],
+                        'challenge_id': challenge_id,
+                        'challenge_name': challenge["challenge_name"], 'challenge_type': challenge["challenge_type"],
+                        'challenge_description': challenge["description"],
+                        'challenge_type_description': challenge_type["description"],
+                        'timestamp': challenge['updated_at'].strftime("%m/%d/%Y, %H:%M:%S")}, 200
+            except (Exception, Error) as error:
+                print(f'Challenge query challenge type failed, error: {error}')
+                return abort(500, message="Internal Server Error")
         except (Exception, Error) as error:
             print(f'Challenge query failed, error: {error}')
             return abort(500, message="Internal Server Error")
@@ -325,6 +358,7 @@ class ChallengeTypeList(Resource):
         return {'user_name': name, 'challenge_type': challenge_type,
                 'description': description,
                 'time_stamp': dt.strftime("%m/%d/%Y, %H:%M:%S")}, 201
+
 
 class ChallengeType(Resource):
     def get(self, challenge_type):
