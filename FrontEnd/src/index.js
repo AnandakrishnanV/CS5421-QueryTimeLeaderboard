@@ -6,7 +6,6 @@ import {
   Route
 } from "react-router-dom";
 import ChallengeOnePage from "./pages/ChallengeOne";
-import ChallengeTwoPage from "./pages/ChallengeTwo";
 import ControlCentre from './pages/ControlCentre';
 import Challenges from './pages/Challenges';
 import Navigation from './components/Navigation/Navigation';
@@ -21,7 +20,6 @@ render(
       <Route path="/" element={<App />} />
       <Route path="/challenges" element={<Challenges />} />
       <Route path="/challengeOne" element={<ChallengeOnePage />} />
-      <Route path="/challengeTwo" element={<ChallengeTwoPage />} />
       <Route path="/controlCenter" element={<ControlCentre />} />
     </Routes>
   </Router>,

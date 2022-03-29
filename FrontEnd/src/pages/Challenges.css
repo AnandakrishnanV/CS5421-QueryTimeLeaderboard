@@ -28,14 +28,6 @@
     border-radius: 0 0 0 10px;   
 }
 
-.zui-table-rounded tbody tr:first-child td {
-    background-color: rgb(181, 235, 181);   
-}
-
-.zui-table-rounded tbody tr:nth-child(2) td {
-    background-color: rgb(181, 235, 181);   
-}
-
 .zui-table-rounded tbody tr:last-child td:last-child {
     border-radius: 0 0 10px 0;
 }
