@@ -23,6 +23,7 @@ CREATE TABLE challenge (
   created_at timestamp,
   updated_at timestamp,
   sql_query TEXT,
+  description TEXT,
   CONSTRAINT fk_challenge_type
       FOREIGN KEY(challenge_type)
 	  REFERENCES challenge_type(challenge_type)
@@ -31,14 +32,16 @@ CREATE TABLE challenge (
 CREATE TABLE challenge_type (
     challenge_type smallint PRIMARY KEY,
     description varchar NOT NULL DEFAULT '',
-    user_name varchar NOT NULL DEFAULT ''
+    user_name varchar NOT NULL DEFAULT '',
+    created_at timestamp,
+    updated_at timestamp,
 );
 
 -- insert challenge types, can be done offline
-INSERT INTO challenge_type(challenge_type, description, user_name)
+INSERT INTO challenge_type(challenge_type, description, user_name, created_at, updated_at)
 VALUES
-(1, 'Slowest Query', 'professor'),
-(2, 'Fastest Query', 'teaching assistant');
+(1, 'Slowest Query', 'professor', current_timestamp(), current_timestamp()),
+(2, 'Fastest Query', 'teaching assistant', current_timestamp(), current_timestamp());
 
 -- grant all permission to a user
 GRANT ALL
