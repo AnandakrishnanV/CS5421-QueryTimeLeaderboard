@@ -28,7 +28,7 @@
 #### Create a Challenge
 **POST \challenges** \
 `curl -X POST -H "Content-Type: application/json" \
-    -d '{"query": "select * from test;", "user_name": "test", "challenge_name": "challenge 1", "challenge_type": 1, "challenge_description": "test challenge"}' \
+    -d '{"query": "select * from test;", "user_name": "test", "challenge_name": "challenge 1", "challenge_type": 1}' \
     http://127.0.0.1:5000/challenges`
 #### Retrieve a List of Challenges
 **GET \challenges** \
