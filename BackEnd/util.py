@@ -5,7 +5,8 @@ from db_client import get_db_connection
 from db_client import execute_query
 from datetime import datetime, timezone
 from psycopg2 import ProgrammingError
-from psycopg2.errors import ReadOnlySqlTransaction, IntegrityError
+from psycopg2.errors import ReadOnlySqlTransaction, IntegrityError, InvalidTextRepresentation
+
 
 class BenchMarkTask(celery.Task, ABC):
 
@@ -42,7 +43,8 @@ class BenchMarkTask(celery.Task, ABC):
 
 
 def process_error(e):
-    if isinstance(e, ProgrammingError) or isinstance(e, ReadOnlySqlTransaction) or isinstance(e, IntegrityError):
+    if isinstance(e, ProgrammingError) or isinstance(e, ReadOnlySqlTransaction) or \
+            isinstance(e, IntegrityError) or isinstance(e, InvalidTextRepresentation):
         return NonRetryableError(e)
     else:
         return RetryableError(e)
