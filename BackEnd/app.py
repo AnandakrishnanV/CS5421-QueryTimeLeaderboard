@@ -477,7 +477,6 @@ class Challenge(Resource):
             conn.close()
             if not challenge:
                 return abort(404, message=f"Challenge {challenge_id} doesn't exist")
-            print([l for l in challenge.keys()])
             return {'user_name': challenge['user_name'], 'query': challenge['sql_query'],
                     'challenge_id': challenge_id,
                     'challenge_name': challenge["challenge_name"], 'challenge_type': challenge["challenge_type"],
