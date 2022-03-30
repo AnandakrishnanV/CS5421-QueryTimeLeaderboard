@@ -63,7 +63,7 @@ VALUES
 
 
 -- insert users with hashed passwords offline
--- the test password here is
+-- all password hashes are generated from the password "jw8s0F4"
 INSERT INTO users(user_name, password, is_admin)
 VALUES
 ('stu1','sha256$IAhWnnEuSEUX6jTf$f27a7e6d15b48f53350e02c0600aec3254837a9484f8f3d439059d21ac3d1b30','False',current_timestamp(), current_timestamp()),
