@@ -50,3 +50,7 @@
 #### Retrieve a Submission
 **GET \submission\\<submission_id>** \
 `curl http://127.0.0.1:5000/submission/sub_xxx`
+
+#### Log in with user_name and password
+curl -X POST -H "Content-Type: application/json" -d '{"user_name": <username>, "password": <password>}' http://127.0.0.1:5000/login
+

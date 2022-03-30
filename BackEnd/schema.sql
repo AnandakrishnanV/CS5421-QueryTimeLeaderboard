@@ -13,6 +13,9 @@ CREATE TABLE submission (
   CONSTRAINT fk_challenge
       FOREIGN KEY(challenge_id)
 	  REFERENCES challenge(challenge_id)
+  CONSTRAINT fk_username
+      FOREIGN KEY(user_name)
+	  REFERENCES users(user_name)
 );
 
 CREATE TABLE challenge (
@@ -27,6 +30,9 @@ CREATE TABLE challenge (
   CONSTRAINT fk_challenge_type
       FOREIGN KEY(challenge_type)
 	  REFERENCES challenge_type(challenge_type)
+  CONSTRAINT fk_username
+      FOREIGN KEY(user_name)
+	  REFERENCES users(user_name)
 );
 
 CREATE TABLE challenge_type (
@@ -35,6 +41,15 @@ CREATE TABLE challenge_type (
     user_name varchar NOT NULL DEFAULT '',
     created_at timestamp,
     updated_at timestamp,
+    CONSTRAINT fk_username
+      FOREIGN KEY(user_name)
+	  REFERENCES users(user_name)
+);
+
+CREATE TABLE users (
+    user_name varchar PRIMARY KEY,
+    password varchar NOT NULL,
+    is_admin boolean NOT NULL DEFAULT FALSE
 );
 
 -- insert challenge types, can be done offline
@@ -42,6 +57,14 @@ INSERT INTO challenge_type(challenge_type, description, user_name, created_at, u
 VALUES
 (1, 'Slowest Query', 'professor', current_timestamp(), current_timestamp()),
 (2, 'Fastest Query', 'teaching assistant', current_timestamp(), current_timestamp());
+
+
+-- insert users with hashed passwords offline
+INSERT INTO users(user_name, password, is_admin)
+VALUES
+('stu1','sha256$IAhWnnEuSEUX6jTf$f27a7e6d15b48f53350e02c0600aec3254837a9484f8f3d439059d21ac3d1b30','True')
+('professor','sha256$IAhWnnEuSEUX6jTf$f27a7e6d15b48f53350e02c0600aec3254837a9484f8f3d439059d21ac3d1b30','True')
+('teaching assistant','sha256$IAhWnnEuSEUX6jTf$f27a7e6d15b48f53350e02c0600aec3254837a9484f8f3d439059d21ac3d1b30','True')
 
 -- grant all permission to a user
 GRANT ALL

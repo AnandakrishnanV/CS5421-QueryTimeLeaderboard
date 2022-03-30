@@ -11,6 +11,9 @@ from db_client import get_db_connection, execute_query, validate_sql_syntax
 from util import RetryableError, BenchMarkTask, process_error, NonRetryableError
 from functools import wraps
 from werkzeug.security import generate_password_hash,check_password_hash
+from authentication import token_required
+
+# from authentication import Login, token_required
 
 # TODO: receive configs and credentials via command line arguments or environment variables
 
@@ -38,7 +41,6 @@ challenge_parser.add_argument('user_name', type=str, required=True, help="User n
 challenge_parser.add_argument('query', type=str, required=True, help="Query cannot be blank!")
 challenge_parser.add_argument('challenge_name', type=str, required=True, help="Challenge name cannot be blank!")
 challenge_parser.add_argument('challenge_type', type=int, required=True, help="Challenge type cannot be blank!")
-challenge_parser.add_argument('challenge_description', type=str, required=True, help="Challenge description cannot be blank!")
 
 submission_parser = reqparse.RequestParser()
 submission_parser.add_argument('query', type=str, required=True, help="Query cannot be blank!")
@@ -59,23 +61,25 @@ login_parser = reqparse.RequestParser()
 login_parser.add_argument('user_name', type=str, required=True, help="User name cannot be blank!")
 login_parser.add_argument('password', type=str, required=True, help="Password cannot be blank!")
 
-DIFF_QUERY_TEMPLATE = '''SELECT CASE WHEN COUNT(*) = 0 THEN 'Same' ELSE 'Different' END FROM (({} EXCEPT {}) UNION ({} EXCEPT {})) AS RESULT'''
 
-def token_required(func):
-    # decorator factory which invoks update_wrapper() method and passes decorated function as an argument
-    @wraps(func)
-    def decorated(*args, **kwargs):
-        token = request.args.get('token')
-        if not token:
-            return jsonify({'Alert!': 'Token is missing!'}), 401
+DIFF_QUERY_TEMPLATE = '''SELECT CASE WHEN COUNT(*) = 0 THEN 'Same' ELSE 'Different' END FROM (({} EXCEPT {}) UNION ({
+} EXCEPT {})) AS RESULT'''
 
-        try:
-            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-
-        except:
-            return jsonify({'Message': 'Invalid token'}), 403
-        return func(*args, **kwargs)
-    return decorated
+# def token_required(func):
+#     # decorator factory which invoks update_wrapper() method and passes decorated function as an argument
+#     @wraps(func)
+#     def decorated(*args, **kwargs):
+#         token = request.args.get('token')
+#         if not token:
+#             return jsonify({'Alert!': 'Token is missing!'}), 401
+#
+#         try:
+#             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+#
+#         except:
+#             return jsonify({'Message': 'Invalid token'}), 403
+#         return func(*args, **kwargs)
+#     return decorated
 
 
 class Login(Resource):
@@ -113,12 +117,19 @@ class Login(Resource):
             print(f'Login check failed, error: {error}')
             return abort(500, message="Internal Server Error")
 
+
+
+class Auth(Resource):
+    @token_required
+    def get(self):
+        return 'JWT is verified. Welcome to your dashboard !  '
+
 @celery.task(throws=(RetryableError, NonRetryableError), autoretry_for=(RetryableError,), retry_backoff=True,
              max_retries=10, base=BenchMarkTask)
 def benchmark_query(baseline_query: str, query: str, submission_id):
     explain_result = None
     try:
-        conn = get_db_connection(host='localhost', database='tuning', user='read_user', password='read_user',
+        conn = get_db_connection(host='localhost', database='tuning', user='davide', password='jw8s0F4',
                                  timeout=BENCHMARK_TIMEOUT, readonly=True)
         cur = execute_query(db_conn=conn, query=f"EXPLAIN ANALYZE {query}")
         explain_result = cur.fetchall()
@@ -133,9 +144,10 @@ def benchmark_query(baseline_query: str, query: str, submission_id):
             # still update on timeout
             try:
                 dt = datetime.now(timezone.utc)
-                conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
+                conn = get_db_connection(host='localhost', database='tuning', user='davide', password='jw8s0F4')
                 cur = execute_query(db_conn=conn,
-                                    query="UPDATE submission SET updated_at = %s, error_message = 'query timeout' WHERE submission_id = %s",
+                                    query="UPDATE submission SET updated_at = %s, error_message = 'query timeout' "
+                                          "WHERE submission_id = %s",
                                     values=(dt, submission_id))
                 count = cur.rowcount
                 cur.close()
@@ -151,7 +163,7 @@ def benchmark_query(baseline_query: str, query: str, submission_id):
     result = None
     try:
         diff_query = DIFF_QUERY_TEMPLATE.format(baseline_query, query, query, baseline_query)
-        conn = get_db_connection(host='localhost', database='tuning', user='read_user', password='read_user',
+        conn = get_db_connection(host='localhost', database='tuning', user='davide', password='jw8s0F4',
                                  timeout=BENCHMARK_TIMEOUT * 2, readonly=True)
         cur = execute_query(db_conn=conn, query=diff_query)
         result = cur.fetchall()[0][0]
@@ -168,9 +180,10 @@ def benchmark_query(baseline_query: str, query: str, submission_id):
     planning_time = explain_result[-2][0].replace('Planning Time: ', '').replace(' ms', '')
     execution_time = explain_result[-1][0].replace('Execution Time: ', '').replace(' ms', '')
     try:
-        conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
+        conn = get_db_connection(host='localhost', database='tuning', user='davide', password='jw8s0F4')
         cur = execute_query(db_conn=conn,
-                            query='UPDATE submission SET is_correct = %s, updated_at = %s, planning_time = %s, execution_time = %s WHERE submission_id = %s',
+                            query='UPDATE submission SET is_correct = %s, updated_at = %s, planning_time = %s, '
+                                  'execution_time = %s WHERE submission_id = %s',
                             values=(is_correct, dt, planning_time, execution_time, submission_id))
         count = cur.rowcount
         cur.close()
@@ -186,7 +199,8 @@ class SubmissionList(Resource):
         args = submission_list_parser.parse_args()
         user_name = args['user_name']
         try:
-            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test', readonly=True)
+            conn = get_db_connection(host='localhost', database='tuning', user='davide', password='jw8s0F4',
+                                     readonly=True)
             cur = execute_query(db_conn=conn, query='SELECT * FROM submission WHERE user_name = %s',
                                 values=(user_name,)) if user_name else execute_query(db_conn=conn,
                                                                                      query='SELECT * FROM submission')
@@ -222,7 +236,7 @@ class SubmissionList(Resource):
         # challenge id must be valid, i.e. a challenge with this id must exist
         try:
             # challenge id must be valid, i.e. a challenge with this id must exist
-            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
+            conn = get_db_connection(host='localhost', database='tuning', user='davide', password='jw8s0F4')
             cur = execute_query(db_conn=conn, query='SELECT * FROM challenge WHERE challenge_id = %s',
                                 values=(challenge_id,))
             challenge = cur.fetchone()
@@ -236,9 +250,10 @@ class SubmissionList(Resource):
         try:
             dt = datetime.now(timezone.utc)
             submission_id = 'sub_' + str(uuid.uuid4())
-            prepared_query = """ INSERT INTO submission (submission_id, user_name, created_at, updated_at, challenge_id, sql_query) VALUES (%s, %s, %s, %s, %s, %s)"""
+            prepared_query = """ INSERT INTO submission (submission_id, user_name, created_at, updated_at, 
+            challenge_id, sql_query) VALUES (%s, %s, %s, %s, %s, %s)"""
             record = (submission_id, name, dt, dt, challenge_id, query)
-            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
+            conn = get_db_connection(host='localhost', database='tuning', user='davide', password='jw8s0F4')
             cur = execute_query(db_conn=conn, query=prepared_query, values=record)
             count = cur.rowcount
             print(f"{count} records inserted successfully into submission table")
@@ -256,7 +271,8 @@ class SubmissionList(Resource):
 class Submission(Resource):
     def get(self, submission_id):
         try:
-            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test', readonly=True)
+            conn = get_db_connection(host='localhost', database='tuning', user='davide', password='jw8s0F4',
+                                     readonly=True)
             cur = execute_query(db_conn=conn, query='SELECT * FROM submission WHERE submission_id = %s',
                                 values=(submission_id,))
             submission = cur.fetchone()
@@ -280,7 +296,8 @@ class ChallengeList(Resource):
         args = challenge_list_parser.parse_args()
         user_name = args['user_name']
         try:
-            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test', readonly=True)
+            conn = get_db_connection(host='localhost', database='tuning', user='davide', password='jw8s0F4',
+                                     readonly=True)
             cur = execute_query(db_conn=conn, query='SELECT * FROM challenge WHERE user_name = %s',
                                 values=(user_name,)) if user_name else execute_query(db_conn=conn,
                                                                                      query='SELECT * FROM challenge')
@@ -289,26 +306,11 @@ class ChallengeList(Resource):
             conn.close()
             challenges = []
             for challenge in challenge_list:
-                try:
-                    type_conn = get_db_connection(host='localhost', database='tuning', user='test', password='test',
-                                                  readonly=True)
-                    type_cur = execute_query(db_conn=type_conn,
-                                             query='SELECT * FROM challenge_type WHERE challenge_type = %s',
-                                             values=(challenge["challenge_type"],))
-                    challenge_type = type_cur.fetchone()
-                    type_cur.close()
-                    type_conn.close()
-                    challenges.append({'user_name': challenge['user_name'], 'query': challenge['sql_query'],
-                                       'challenge_id': challenge["challenge_id"],
-                                       'challenge_name': challenge["challenge_name"],
-                                       'challenge_type': challenge["challenge_type"],
-                                       'challenge_description': challenge["description"],
-                                       'challenge_type_description': challenge_type["description"],
-                                       'timestamp': challenge['updated_at'].strftime("%m/%d/%Y, %H:%M:%S")})
-
-                except (Exception, Error) as error:
-                    print(f'Challenge list query challenge type failed, error: {error}')
-                    return abort(500, message="Internal Server Error")
+                challenges.append({'user_name': challenge['user_name'], 'query': challenge['sql_query'],
+                                   'challenge_id': challenge["challenge_id"],
+                                   'challenge_name': challenge["challenge_name"],
+                                   'challenge_type': challenge["challenge_type"],
+                                   'timestamp': challenge['updated_at'].strftime("%m/%d/%Y, %H:%M:%S")})
             return challenges, 200
         except (Exception, Error) as error:
             print(f'Challenge list query failed, error: {error}')
@@ -320,7 +322,6 @@ class ChallengeList(Resource):
         query = args['query'].replace(';', '').lower().strip()
         challenge_name = args['challenge_name'].strip()
         challenge_type = args['challenge_type']
-        challenge_description = args['challenge_description']
         if not query.startswith('select'):
             return abort(400, message="Only Select Query Allowed")
         if not validate_sql_syntax(query):
@@ -330,9 +331,10 @@ class ChallengeList(Resource):
             dt = datetime.now(timezone.utc)
             challenge_id = 'ch_' + str(uuid.uuid4())
             admin_query = 'SELECT is_admin FROM users WHERE user_name = %s'
-            prepared_query = """ INSERT INTO challenge (user_name, created_at, updated_at, challenge_id, challenge_name, challenge_type, description, sql_query) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
-            record = (name, dt, dt, challenge_id, challenge_name, challenge_type, challenge_description, query)
-            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
+            prepared_query = """ INSERT INTO challenge (user_name, created_at, updated_at, challenge_id, 
+            challenge_name, challenge_type, sql_query) VALUES (%s, %s, %s, %s, %s, %s, %s)"""
+            record = (name, dt, dt, challenge_id, challenge_name, challenge_type, query)
+            conn = get_db_connection(host='localhost', database='tuning', user='davide', password='jw8s0F4')
             cur_is_admin = execute_query(db_conn=conn, query=admin_query, values=(name,))
             is_admin = cur_is_admin.fetchone()
             if is_admin[0]:
@@ -349,14 +351,14 @@ class ChallengeList(Resource):
             return abort(500, message="Internal Server Error")
         return {'user_name': name, 'query': query, 'challenge_id': challenge_id,
                 'challenge_name': challenge_name, 'challenge_type': challenge_type,
-                'challenge_description': challenge_description,
                 'time_stamp': dt.strftime("%m/%d/%Y, %H:%M:%S")}, 201
 
 
 class Challenge(Resource):
     def get(self, challenge_id):
         try:
-            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test', readonly=True)
+            conn = get_db_connection(host='localhost', database='tuning', user='davide', password='jw8s0F4',
+                                     readonly=True)
             cur = execute_query(db_conn=conn, query='SELECT * FROM challenge WHERE challenge_id = %s',
                                 values=(challenge_id,))
             challenge = cur.fetchone()
@@ -364,24 +366,9 @@ class Challenge(Resource):
             conn.close()
             if not challenge:
                 return abort(404, message=f"Challenge {challenge_id} doesn't exist")
-            try:
-                type_conn = get_db_connection(host='localhost', database='tuning', user='test', password='test',
-                                              readonly=True)
-                type_cur = execute_query(db_conn=type_conn,
-                                         query='SELECT * FROM challenge_type WHERE challenge_type = %s',
-                                         values=(challenge["challenge_type"],))
-                challenge_type = type_cur.fetchone()
-                type_cur.close()
-                type_conn.close()
-                return {'user_name': challenge['user_name'], 'query': challenge['sql_query'],
-                        'challenge_id': challenge_id,
-                        'challenge_name': challenge["challenge_name"], 'challenge_type': challenge["challenge_type"],
-                        'challenge_description': challenge["description"],
-                        'challenge_type_description': challenge_type["description"],
-                        'timestamp': challenge['updated_at'].strftime("%m/%d/%Y, %H:%M:%S")}, 200
-            except (Exception, Error) as error:
-                print(f'Challenge query challenge type failed, error: {error}')
-                return abort(500, message="Internal Server Error")
+            return {'user_name': challenge['user_name'], 'query': challenge['sql_query'], 'challenge_id': challenge_id,
+                    'challenge_name': challenge["challenge_name"], 'challenge_type': challenge["challenge_type"],
+                    'timestamp': challenge['updated_at'].strftime("%m/%d/%Y, %H:%M:%S")}, 200
         except (Exception, Error) as error:
             print(f'Challenge query failed, error: {error}')
             return abort(500, message="Internal Server Error")
@@ -390,7 +377,8 @@ class Challenge(Resource):
 class ChallengeTypeList(Resource):
     def get(self):
         try:
-            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test', readonly=True)
+            conn = get_db_connection(host='localhost', database='tuning', user='davide', password='jw8s0F4',
+                                     readonly=True)
             cur = execute_query(db_conn=conn, query='SELECT * FROM challenge_type')
             challenge_type_list = cur.fetchall()
             cur.close()
@@ -414,12 +402,13 @@ class ChallengeTypeList(Resource):
         name = args['user_name']
         try:
             dt = datetime.now(timezone.utc)
-            admin_query = 'SELECT is_admin FROM users WHERE user_name = %s'
-            prepared_query = """ INSERT INTO challenge_type (user_name, created_at, updated_at, challenge_type, description) VALUES (%s, %s, %s, %s, %s)"""
+            admin_query='SELECT is_admin FROM users WHERE user_name = %s'
+            prepared_query = """ INSERT INTO challenge_type (user_name, created_at, updated_at, challenge_type, 
+            description) VALUES (%s, %s, %s, %s, %s)"""
             record = (name, dt, dt, challenge_type, description)
-            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
+            conn = get_db_connection(host='localhost', database='tuning', user='davide', password='jw8s0F4')
             cur_is_admin = execute_query(db_conn=conn, query=admin_query, values=(name,))
-            is_admin = cur_is_admin.fetchone()
+            is_admin=cur_is_admin.fetchone()
             if is_admin[0]:
                 cur = execute_query(db_conn=conn, query=prepared_query, values=record)
                 count = cur.rowcount
@@ -440,7 +429,8 @@ class ChallengeTypeList(Resource):
 class ChallengeType(Resource):
     def get(self, challenge_type):
         try:
-            conn = get_db_connection(host='localhost', database='tuning', user='test', password='test', readonly=True)
+            conn = get_db_connection(host='localhost', database='tuning', user='davide', password='jw8s0F4',
+                                     readonly=True)
             cur = execute_query(db_conn=conn, query='SELECT * FROM challenge_type WHERE challenge_type = %s',
                                 values=(challenge_type,))
             record = cur.fetchone()
@@ -463,6 +453,7 @@ api.add_resource(ChallengeList, '/challenges')
 api.add_resource(ChallengeType, '/challenge_type/<challenge_type>')
 api.add_resource(ChallengeTypeList, '/challenge_types')
 api.add_resource(Login, '/login')
+api.add_resource(Auth, '/auth')
 
 if __name__ == '__main__':
     app.run(debug=True)
