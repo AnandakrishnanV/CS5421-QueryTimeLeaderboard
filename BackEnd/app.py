@@ -1,13 +1,16 @@
 import uuid
-from datetime import datetime, timezone
+import jwt
+from datetime import datetime, timezone, timedelta
 from celery.utils.log import get_task_logger
 
-from flask import Flask
+from flask import Flask, request,  jsonify, flash, session ,make_response
 from flask_restful import reqparse, Resource, Api, abort
 from psycopg2 import Error
 from celery import Celery
 from db_client import get_db_connection, execute_query, validate_sql_syntax
 from util import RetryableError, BenchMarkTask, process_error, NonRetryableError
+from functools import wraps
+from werkzeug.security import generate_password_hash,check_password_hash
 
 # TODO: receive configs and credentials via command line arguments or environment variables
 
@@ -21,6 +24,8 @@ logger = get_task_logger(__name__)
 
 app.config['celery_broker_url'] = 'redis://localhost:6379'
 app.config['celery_result_backend'] = 'redis://localhost:6379'
+
+app.config['SECRET_KEY'] = '8454e5a14e6c4a3490e85f8cd0737fa0'
 
 celery = Celery(app.name, broker=app.config['celery_broker_url'], backend=app.config['celery_result_backend'])
 celery.conf.update(app.config)
@@ -50,8 +55,63 @@ challenge_type_parser.add_argument('user_name', type=str, required=True, help="U
 challenge_type_parser.add_argument('description', type=str, required=True, help="Description cannot be blank!")
 challenge_type_parser.add_argument('challenge_type', type=str, required=True, help="Challenge type cannot be blank!")
 
+login_parser = reqparse.RequestParser()
+login_parser.add_argument('user_name', type=str, required=True, help="User name cannot be blank!")
+login_parser.add_argument('password', type=str, required=True, help="Password cannot be blank!")
+
 DIFF_QUERY_TEMPLATE = '''SELECT CASE WHEN COUNT(*) = 0 THEN 'Same' ELSE 'Different' END FROM (({} EXCEPT {}) UNION ({} EXCEPT {})) AS RESULT'''
 
+def token_required(func):
+    # decorator factory which invoks update_wrapper() method and passes decorated function as an argument
+    @wraps(func)
+    def decorated(*args, **kwargs):
+        token = request.args.get('token')
+        if not token:
+            return jsonify({'Alert!': 'Token is missing!'}), 401
+
+        try:
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+
+        except:
+            return jsonify({'Message': 'Invalid token'}), 403
+        return func(*args, **kwargs)
+    return decorated
+
+
+class Login(Resource):
+    def post(self):
+
+        args = login_parser.parse_args()
+        user_name = args['user_name']
+        password=args['password']
+        # to generate the hashed password, use generate_password_hash(<password str>, method='sha256')
+
+        try:
+            conn = get_db_connection(host='localhost', database='tuning', user='davide', password='jw8s0F4',
+                                     readonly=True)
+            cur = execute_query(db_conn=conn, query='SELECT * FROM users WHERE user_name = %s ',
+                                values=(user_name,))
+
+            current_user= cur.fetchall()
+            hashed_password=current_user[0][-2]
+            cur.close()
+            conn.close()
+
+            if current_user and check_password_hash(hashed_password,password):
+                session['logged_in'] = True
+
+                token = jwt.encode({
+                    'user': user_name,
+                    'exp': datetime.utcnow() + timedelta(minutes=30)
+                },
+                    app.config['SECRET_KEY'])
+                return jsonify({'token': token})
+            else:
+                return make_response('Unable to verify', 403,
+                                     {'WWW-Authenticate': 'Basic realm: "Authentication Failed "'})
+        except (Exception, Error) as error:
+            print(f'Login check failed, error: {error}')
+            return abort(500, message="Internal Server Error")
 
 @celery.task(throws=(RetryableError, NonRetryableError), autoretry_for=(RetryableError,), retry_backoff=True,
              max_retries=10, base=BenchMarkTask)
@@ -149,6 +209,7 @@ class SubmissionList(Resource):
             print(f'Submission list query failed, error: {error}')
             return abort(400, message="Invalid Server Error")
 
+    @token_required
     def post(self):
         args = submission_parser.parse_args()
         query = args['query'].replace(';', '').lower().strip()
@@ -253,6 +314,7 @@ class ChallengeList(Resource):
             print(f'Challenge list query failed, error: {error}')
             return abort(500, message="Internal Server Error")
 
+    @token_required
     def post(self):
         args = challenge_parser.parse_args()
         query = args['query'].replace(';', '').lower().strip()
@@ -267,12 +329,19 @@ class ChallengeList(Resource):
         try:
             dt = datetime.now(timezone.utc)
             challenge_id = 'ch_' + str(uuid.uuid4())
+            admin_query = 'SELECT is_admin FROM users WHERE user_name = %s'
             prepared_query = """ INSERT INTO challenge (user_name, created_at, updated_at, challenge_id, challenge_name, challenge_type, description, sql_query) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
             record = (name, dt, dt, challenge_id, challenge_name, challenge_type, challenge_description, query)
             conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
-            cur = execute_query(db_conn=conn, query=prepared_query, values=record)
-            count = cur.rowcount
-            print(f"{count} records inserted successfully into challenge table")
+            cur_is_admin = execute_query(db_conn=conn, query=admin_query, values=(name,))
+            is_admin = cur_is_admin.fetchone()
+            if is_admin[0]:
+                cur = execute_query(db_conn=conn, query=prepared_query, values=record)
+                count = cur.rowcount
+                print(f"{count} records inserted successfully into challenge table")
+            else:
+                return abort(403, message=f"User {name} is not allowed to update here")
+            cur_is_admin.close()
             cur.close()
             conn.close()
         except (Exception, Error) as error:
@@ -337,6 +406,7 @@ class ChallengeTypeList(Resource):
             print(f'Challenge type list query failed, error: {error}')
             return abort(500, message="Internal Server Error")
 
+    @token_required
     def post(self):
         args = challenge_type_parser.parse_args()
         challenge_type = args['challenge_type']
@@ -344,12 +414,19 @@ class ChallengeTypeList(Resource):
         name = args['user_name']
         try:
             dt = datetime.now(timezone.utc)
+            admin_query = 'SELECT is_admin FROM users WHERE user_name = %s'
             prepared_query = """ INSERT INTO challenge_type (user_name, created_at, updated_at, challenge_type, description) VALUES (%s, %s, %s, %s, %s)"""
             record = (name, dt, dt, challenge_type, description)
             conn = get_db_connection(host='localhost', database='tuning', user='test', password='test')
-            cur = execute_query(db_conn=conn, query=prepared_query, values=record)
-            count = cur.rowcount
-            print(f"{count} records inserted successfully into challenge type table")
+            cur_is_admin = execute_query(db_conn=conn, query=admin_query, values=(name,))
+            is_admin = cur_is_admin.fetchone()
+            if is_admin[0]:
+                cur = execute_query(db_conn=conn, query=prepared_query, values=record)
+                count = cur.rowcount
+                print(f"{count} records inserted successfully into challenge type table")
+            else:
+                return abort(403, message=f"User {name} is not allowed to update here")
+            cur_is_admin.close()
             cur.close()
             conn.close()
         except (Exception, Error) as error:
@@ -385,6 +462,7 @@ api.add_resource(Challenge, '/challenge/<challenge_id>')
 api.add_resource(ChallengeList, '/challenges')
 api.add_resource(ChallengeType, '/challenge_type/<challenge_type>')
 api.add_resource(ChallengeTypeList, '/challenge_types')
+api.add_resource(Login, '/login')
 
 if __name__ == '__main__':
     app.run(debug=True)
