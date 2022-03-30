@@ -10,7 +10,7 @@ export const C_COL = [
     },
     {
         Header: "Challenge Type",
-        accessor: 'challenge_type'
+        accessor: 'challenge_type_description'
     },
     {
         Header: "Date",

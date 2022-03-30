@@ -10,8 +10,9 @@ const ControlCentre = (props) => {
 
   const actualPassHash = "teachteampass";
   const [inpChallenge, setInpChallenge] = useState("");
+  const [inpChallengeName, setInpChallengeName] = useState("");
   const [inpChallengeRes, setInpChallengeRes] = useState("");
-  const [inpChallengeType, setInpChallengeType] = useState("");
+  const [inpChallengeType, setInpChallengeType] = useState("1");
   const [inpPass, setPass] = useState("");
   const [ifPassCorrect, setIfPass] = useState("");
 
@@ -19,22 +20,24 @@ const ControlCentre = (props) => {
     event.preventDefault(); //to stop req sent to anywhere, prompting refresh
 
     const submitData = {
-      challengeID: inpChallengeType,
-      challengeText: inpChallenge,
+      challenge_name: inpChallengeName,
+      challenge_description: inpChallenge,
+      user_name: "ta",
       query:  inpChallengeRes,
-      challengeType: inpChallengeType,
-      timestamp: Math.floor(Date.now() / 1000),
+      challenge_type: inpChallengeType,
+                          //-->change later
     };
+
     sendRequestToServer(submitData);
-    //props.onSaveChallengeData(submitData); //passing data UP
+
     setInpChallenge("");
     setInpChallengeRes("");
     setInpChallengeType("");
   };
 
   const sendRequestToServer = async (data) => {
-    let json = JSON.stringify(data)
-    const res = await axios.post('http://127.0.0.1:5000/challenges', json);
+    const res = await axios.post('http://127.0.0.1:5000/challenges', data);
+    console.log(res)
   }
 
   const chalTypeChangeHandler = (event) => {
@@ -45,15 +48,19 @@ const ControlCentre = (props) => {
     setInpChallenge(event.target.value);
   };
 
+  const chalNameChangeHandler = (event) => {
+    setInpChallengeName(event.target.value);
+  };
+
   const chalResultChangeHandler = (event) => {
     setInpChallengeRes(event.target.value);
   };
 
   const submitPassHandler = (event) => {
     event.preventDefault();
-
+    setIfPass(true)
     if (inpPass === actualPassHash) {
-      setIfPass(true);
+      //  setIfPass(true);   ---> changing for dev
     }
     setPass("");
   };
@@ -96,16 +103,21 @@ const ControlCentre = (props) => {
               <Form.Select onChange={chalTypeChangeHandler}>
                 <option value="1">Slowest Query</option>
                 <option value="2">Fastest Query</option>
-                <option value="3">Query Correctness</option>
               </Form.Select>
-              <Form.Label>Enter New Challenge Text</Form.Label>
+              <Form.Label>Enter New Challenge Name</Form.Label>
+              <Form.Control
+                as="input"
+                value={inpChallengeName}
+                onChange={chalNameChangeHandler}
+              />
+              <Form.Label>Enter New Challenge Description</Form.Label>
               <Form.Control
                 as="textarea"
                 rows={4}
                 value={inpChallenge}
                 onChange={chalChangeHandler}
               />
-              <Form.Label>Enter New Challenge Result</Form.Label>
+              <Form.Label>Enter Challenge Result Query</Form.Label>
               <Form.Control
                 as="textarea"
                 rows={4}

@@ -4,7 +4,7 @@ import { Form, Button } from "react-bootstrap";
 import "./QueryForm.css";
 
 const QueryForm = (props) => {
-  const [inpSID, setInpSID] = useState("");
+  const [inpUserName, setInpUserName] = useState("");
   const [inpName, setName] = useState("");
   const [inpQuery, setInpQuery] = useState("");
   const [ifDangerKeyword, setDangerKeyword] = useState(false);
@@ -25,16 +25,13 @@ const QueryForm = (props) => {
     var ifFKey = checkForbiddenKeywords()
 
     const submitData = {
-      sid: inpSID,
-      name: inpName,
-      query: inpQuery,
-      timestamp: Math.floor(Date.now() / 1000),
+      user_name: inpUserName,
+      query: inpQuery
     };
 
     if(!ifFKey) {
       props.onSaveQueryData(submitData); //passing data UP
-      setInpSID("");
-      setName("");
+      setInpUserName("");
       setInpQuery("");
     }
   };
@@ -64,12 +61,8 @@ const QueryForm = (props) => {
     }
   };
 
-  const sidChangeHandler = (event) => {
-    setInpSID(event.target.value);
-  };
-
-  const nameChangeHandler = (event) => {
-    setName(event.target.value);
+  const userNameChangeHandler = (event) => {
+    setInpUserName(event.target.value);
   };
 
   const queryChangeHandler = (event) => {    
@@ -81,24 +74,15 @@ const QueryForm = (props) => {
   return (
     <Form className="query-form" onSubmit={submitHandler}>
       <Form.Group className="mb-3">
-        <Form.Label>Student ID</Form.Label>
+        <Form.Label>Student User Name</Form.Label>
         <Form.Control
           type="text"
-          value={inpSID}
-          placeholder="Enter Student ID"
-          onChange={sidChangeHandler}
+          value={inpUserName}
+          placeholder="Enter Student UserName"
+          onChange={userNameChangeHandler}
         />
       </Form.Group>
 
-      <Form.Group className="mb-3">
-        <Form.Label>Name</Form.Label>
-        <Form.Control
-          type="text"
-          value={inpName}
-          placeholder="Name"
-          onChange={nameChangeHandler}
-        />
-      </Form.Group>
       <Form.Group className="mb-3">
         <Form.Label>Query</Form.Label>
         <Form.Control as="textarea" rows={4} value={inpQuery} onChange={queryChangeHandler} />
