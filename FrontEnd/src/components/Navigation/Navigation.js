@@ -10,6 +10,7 @@ const Navigation = () => (
     <Navbar.Brand href="/">QueryTime Leaderboard</Navbar.Brand>
     <Nav className="nav">
       <Link className="nav-link" to="/challenges">Challenges</Link> 
+      <Link className="nav-link" to="/studentCentre">Student Center</Link>
       <Link className="nav-link" to="/controlCenter">Control Center</Link>
     </Nav>
     </Container>

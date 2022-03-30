@@ -9,6 +9,8 @@ import ChallengeOnePage from "./pages/ChallengeOne";
 import ControlCentre from './pages/ControlCentre';
 import Challenges from './pages/Challenges';
 import Navigation from './components/Navigation/Navigation';
+import StudentCentre from './pages/StudentCentre';
+import StudentSubmissions from './pages/StudentSubmissions';
 
 import App from "./App";
 
@@ -20,6 +22,8 @@ render(
       <Route path="/" element={<App />} />
       <Route path="/challenges" element={<Challenges />} />
       <Route path="/challengeOne" element={<ChallengeOnePage />} />
+      <Route path="/StudentCentre" element={<StudentCentre />} />
+      <Route path="/StudentSubmissions" element={<StudentSubmissions />} />
       <Route path="/controlCenter" element={<ControlCentre />} />
     </Routes>
   </Router>,

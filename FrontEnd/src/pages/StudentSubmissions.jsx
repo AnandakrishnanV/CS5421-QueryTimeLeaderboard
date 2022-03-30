@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Table } from "react-bootstrap";
-import "./Challenges.css";
+import { Form, Button } from "react-bootstrap";
 import axios from "axios";
-import { C_COL } from "../components/challengeColumns";
+import { Sub_Col } from "../components/Table/Columns/SubmissionColumns";
 import {
   useTable,
   useSortBy,
@@ -10,65 +9,78 @@ import {
   useFilters,
 } from "react-table/dist/react-table.development";
 
+import { useLocation } from "react-router-dom";
+
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
-const Challenges = () => {
-  let nav = useNavigate();
-  const handleRowClick = (event) => {
-    console.log(event.target.parentElement.firstChild.textContent);
-    let clickId = event.target.parentElement.firstChild.textContent;
-    var challenge = challengeData.filter((obj) => {
-      return obj.challenge_id === clickId;
-    });
-    console.log(challenge);
+import "./StudentSubmissions.css";
 
-    let path = "/challengeOne";
-    nav(path, { state: challenge[0] });
+//todo: separate page for query viewing, truncate query
+
+const StudentSubmissions = (props) => {
+  const { state } = useLocation();
+  console.log(state);
+
+  const handleRowClick = () => {};
+
+  //   let nav = useNavigate();
+  //   const handleRowClick = (event) => {
+  //     console.log(event.target.parentElement.firstChild.textContent);
+  //     let clickId = event.target.parentElement.firstChild.textContent;
+  //     var challenge = challengeData.filter((obj) => {
+  //       return obj.challenge_id === clickId;
+  //     });
+  //     console.log(challenge);
+
+  //     let path = "/studentPage";
+  //     nav(path, { state: challenge[0] });
+  //   };
+
+  const [subData, setSubData] = useState([]);
+
+  const checkAndSetQueryCorrectness = (item) => {
+      if(item) {
+          return "Correct"
+      }
+      else {
+          return "Wrong"
+      }
   };
 
-  const [chalData, setChalData] = useState([]);
-  const fetchChalData = async () => {
-    const res = await axios
-      .get(" http://127.0.0.1:5000/challenges")
-      .catch((err) => console.log(err));
-
-    if (res) {
-      const data = res.data;
-      console.log(data);
-      setChalData(
+  const fetchSubData = async () => {
+    if (state) {
+      const data = state.map((obj) => ({
+        ...obj,
+        correctness: checkAndSetQueryCorrectness(obj.is_correct),
+      }));
+      setSubData(
         data.map((item) => ({
           ...item,
         }))
       );
-      console.log(chalData)
+      console.log(subData);
     }
   };
   useEffect(() => {
-    fetchChalData();
+    fetchSubData();
   }, []);
 
-  const columns = useMemo(() => C_COL, []);
-  const challengeData = useMemo(() => [...chalData], [chalData]);
-  console.log(challengeData);
+  const columns = useMemo(() => Sub_Col, []);
+  const submissionData = useMemo(() => [...subData], [subData]);
+  console.log(submissionData);
 
   const tableInstance = useTable(
     {
       columns,
-      data: challengeData,
+      data: submissionData,
     },
     useFilters,
     useGlobalFilter,
     useSortBy
   );
 
-  const {
-    getTableProps,
-    getTableBodyProps,
-    headerGroups,
-    rows,
-    prepareRow,
-    state,
-  } = tableInstance;
+  const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
+    tableInstance;
 
   return (
     <div>
@@ -110,4 +122,4 @@ const Challenges = () => {
   );
 };
 
-export default Challenges;
+export default StudentSubmissions;
