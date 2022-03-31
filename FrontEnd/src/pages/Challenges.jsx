@@ -13,17 +13,66 @@ import {
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
 const Challenges = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
   let nav = useNavigate();
   const handleRowClick = (event) => {
-    console.log(event.target.parentElement.firstChild.textContent);
-    let clickId = event.target.parentElement.firstChild.textContent;
-    var challenge = challengeData.filter((obj) => {
-      return obj.challenge_id === clickId;
-    });
-    console.log(challenge);
+    checkLogin();
 
-    let path = "/challengeOne";
-    nav(path, { state: challenge[0] });
+    if (isLoggedIn) {
+      console.log(event.target.parentElement.firstChild.textContent);
+      let clickId = event.target.parentElement.firstChild.textContent;
+      var challenge = challengeData.filter((obj) => {
+        return obj.challenge_id === clickId;
+      });
+      console.log(challenge);
+
+      fetchLadder(challenge[0]);
+    } else {
+      //login again
+      console.log("hi");
+    }
+  };
+
+  const fetchLadder = async (challenge) => {
+    let config = {
+      headers: {
+        user: localStorage.getItem("user"),
+        token: localStorage.getItem("token"),
+      },
+      params: { challenge_id: challenge.challenge_id },
+    };
+
+    const req = await axios
+      .get("http://127.0.0.1:5000/submissions", config)
+      .then((response) => {
+        let queries = response.data;
+        console.log(queries);
+
+        let send_data = {
+          challenge: challenge,
+          chal_list: queries,
+          user: localStorage.getItem("user"),
+          token: localStorage.getItem("token"),
+          token_timestamp: localStorage.getItem("token_timestamp"),
+        };
+
+        let path = "/challengeOne";
+        nav(path, { state: send_data });
+      });
+  };
+
+  const checkLogin = () => {
+    if (localStorage.getItem("token_timestamp")) {
+      let token_time = localStorage.getItem("token_timestamp");
+      let current_time = Date.now() / 1000;
+
+      if (current_time - token_time >= 600) {
+        setIsLoggedIn(false);
+      } else {
+        setIsLoggedIn(true);
+      }
+    }
   };
 
   const [chalData, setChalData] = useState([]);
@@ -40,11 +89,12 @@ const Challenges = () => {
           ...item,
         }))
       );
-      console.log(chalData)
+      console.log(chalData);
     }
   };
   useEffect(() => {
     fetchChalData();
+    checkLogin();
   }, []);
 
   const columns = useMemo(() => C_COL, []);
