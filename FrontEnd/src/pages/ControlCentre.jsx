@@ -82,11 +82,13 @@ const ControlCentre = (props) => {
       .then((response) => {
         console.log(response.data);
 
-        localStorage.setItem("tt_user", inpUserName);
-        localStorage.setItem("tt_token", response.data.token);
-        localStorage.setItem("tt_token_timestamp", Date.now());
+        if (response.data.is_admin) {
+          localStorage.setItem("tt_user", inpUserName);
+          localStorage.setItem("tt_token", response.data.token);
+          localStorage.setItem("tt_token_timestamp", Date.now());
 
-        setIfPass(true);
+          setIfPass(true);
+        }
       });
 
     setInpUserName("");
