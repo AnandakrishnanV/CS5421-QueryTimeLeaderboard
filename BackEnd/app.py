@@ -60,7 +60,7 @@ submission_list_parser = reqparse.RequestParser()
 submission_list_parser.add_argument('user_name', type=str)
 submission_list_parser.add_argument('challenge_id', type=str)
 challenge_list_parser = reqparse.RequestParser()
-challenge_list_parser.add_argument('user_name', required=True, type=str)
+challenge_list_parser.add_argument('user_name', type=str)
 
 challenge_type_parser = reqparse.RequestParser()
 challenge_type_parser.add_argument('user_name', type=str, required=True, help="User name cannot be blank!")
