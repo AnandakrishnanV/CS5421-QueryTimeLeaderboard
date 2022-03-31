@@ -7,27 +7,32 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import "./StudentCentre.css";
 
 const StudentCentre = () => {
-  const [inpUserName, setInpUserName] = useState("");
+  const [inpUserName, setInpUserName] = useState("stu1");
+  const [inpPassword, setInpPassword] = useState("jw8s0F4");
   const [ifUserNameWrong, setIfUserNameWrong] = useState(false);
+  const [token, setToken] = useState("");
 
   const userNameChangeHandler = (event) => {
     setInpUserName(event.target.value);
-    setIfUserNameWrong(false)
+    setIfUserNameWrong(false);
+  };
+
+  const passwordChangeHandler = (event) => {
+    setInpPassword(event.target.value);
   };
 
   let nav = useNavigate();
 
   const handleRowClick = (event) => {
-    console.log(event.target.parentElement.firstChild.textContent);
-    let clickId = event.target.parentElement.firstChild.textContent;
-    var challenge = null;
-    // challengeData.filter((obj) => {
-    //   return obj.challenge_id === clickId;
-    // });
-    console.log(challenge);
-
-    let path = "/studentsubmissions";
-    nav(path, { state: challenge[0] });
+    // console.log(event.target.parentElement.firstChild.textContent);
+    // let clickId = event.target.parentElement.firstChild.textContent;
+    // var challenge = null;
+    // // challengeData.filter((obj) => {
+    // //   return obj.challenge_id === clickId;
+    // // });
+    // console.log(challenge);
+    // let path = "/studentsubmissions";
+    // nav(path, { state: challenge[0] });
   };
 
   const submitHandler = (event) => {
@@ -35,14 +40,47 @@ const StudentCentre = () => {
 
     const submitData = {
       user_name: inpUserName,
+      password: inpPassword,
     };
 
-    fetchSubmissionData(submitData);
+    fetchToken(submitData);
 
     setInpUserName("");
+    setInpPassword("");
+  };
+
+  const fetchToken = async (data) => {
+    console.log(data);
+    const res = await axios
+      .post("http://127.0.0.1:5000/login", {
+        user_name: data.user_name,
+        password: inpPassword,
+      })
+      .catch((err) => console.log(err));
+
+    if (res) {
+      const token = res.data.token;
+      console.log(token);
+      setToken(token);
+      localStorage.setItem("user", inpUserName);
+      localStorage.setItem("token", token);
+      localStorage.setItem("token_timestamp", Date.now()/1000)
+
+      fetchSubmissionData(data);
+    }
   };
 
   const fetchSubmissionData = async (data) => {
+    console.log(data);
+
+    // let config = {
+    //   headers: {
+    //     user: localStorage.getItem("user"),
+    //     token: localStorage.getItem("token"),
+    //   },
+    //   user_name: localStorage.getItem("user"),
+    // };
+
     const res = await axios
       .get("http://127.0.0.1:5000/submissions", {
         params: { user_name: data.user_name },
@@ -53,7 +91,7 @@ const StudentCentre = () => {
       const data = res.data;
       console.log(data);
       if (!data.length) {
-          setIfUserNameWrong(true)
+        setIfUserNameWrong(true);
       } else {
         let path = "/studentsubmissions";
         nav(path, { state: data });
@@ -94,6 +132,16 @@ const StudentCentre = () => {
           value={inpUserName}
           placeholder="Enter Student UserName"
           onChange={userNameChangeHandler}
+        />
+      </Form.Group>
+
+      <Form.Group className="mb-3">
+        <Form.Label>Student Password</Form.Label>
+        <Form.Control
+          type="password"
+          value={inpPassword}
+          placeholder="Enter Student Password"
+          onChange={passwordChangeHandler}
         />
       </Form.Group>
 
