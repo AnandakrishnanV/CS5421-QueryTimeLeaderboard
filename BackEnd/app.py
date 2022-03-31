@@ -290,6 +290,7 @@ class SubmissionList(Resource):
             submissions = sorted(submissions, key=lambda k: k['total_time'],
                                  reverse=(challenge_type == CHALLENGE_TYPE_SLOWEST_QUERY))
             submissions = sorted(submissions, key=lambda k: k['timestamp'], reverse=False)
+            submissions = [dict(s, **{'rank': i}) for i, s in enumerate(submissions)]
             return submissions, 200
         except (Exception, Error) as error:
             print(f'Submission list query failed, error: {error}')
@@ -397,7 +398,7 @@ class ChallengeList(Resource):
             filtered_query = base_query + ' WHERE c1.user_name = %s'
             cur = execute_query(db_conn=conn, query=filtered_query,
                                 values=(user_name,)) if user_name else execute_query(db_conn=conn,
-                                                                                                      query=base_query)
+                                                                                     query=base_query)
             challenge_list = cur.fetchall()
             cur.close()
             conn.close()
