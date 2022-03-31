@@ -121,8 +121,8 @@ class Login(Resource):
             cur = execute_query(db_conn=conn, query='SELECT * FROM users WHERE user_name = %s ',
                                 values=(user_name,))
 
-            current_user = cur.fetchall()
-            hashed_password = current_user[0][-2]
+            current_user = cur.fetchone()
+            hashed_password = current_user['password']
             cur.close()
             conn.close()
 
@@ -134,10 +134,9 @@ class Login(Resource):
                     'exp': datetime.utcnow() + timedelta(minutes=30)
                 },
                     app.config['SECRET_KEY'])
-                return jsonify({'token': token})
+                return make_response(jsonify({'token': token, 'is_admin': current_user['is_admin']}), 200)
             else:
-                return make_response('Unable to verify', 403,
-                                     {'WWW-Authenticate': 'Basic realm: "Authentication Failed "'})
+                return make_response(jsonify({'message': 'Authentication Failed'}), 403)
         except (Exception, Error) as error:
             print(f'Login check failed, error: {error}')
             return abort(500, message="Internal Server Error")
@@ -290,7 +289,7 @@ class SubmissionList(Resource):
                                  reverse=(challenge_type == CHALLENGE_TYPE_SLOWEST_QUERY))
             submissions = sorted(submissions, key=lambda k: k['timestamp'], reverse=False)
             submissions = [dict(s, **{'rank': i}) for i, s in enumerate(submissions)]
-            return submissions, 200
+            return make_response(jsonify(submissions), 200)
         except (Exception, Error) as error:
             print(f'Submission list query failed, error: {error}')
             return abort(400, message="Invalid Server Error")
@@ -339,8 +338,8 @@ class SubmissionList(Resource):
             return abort(500, message="Internal Server Error")
 
         benchmark_query.delay(baseline_query=challenge['sql_query'], query=query, submission_id=submission_id)
-        return {'user_name': name, 'query': query, 'submission_id': submission_id,
-                'time_stamp': dt.strftime("%m/%d/%Y, %H:%M:%S")}, 201
+        return make_response(jsonify({'user_name': name, 'query': query, 'submission_id': submission_id,
+                                      'time_stamp': dt.strftime("%m/%d/%Y, %H:%M:%S")}), 201)
 
 
 class Submission(Resource):
@@ -365,15 +364,19 @@ class Submission(Resource):
             conn.close()
             if submission is None:
                 return abort(404, message=f"Submission {submission_id} doesn't exist")
-            return {'user_name': submission['user_name'], 'query': submission['sql_query'],
-                    'submission_id': submission_id, 'challenge_name': submission["challenge_name"],
-                    'challenge_type': submission['challenge_type'],
-                    'challenge_description': submission['description'],
-                    'timestamp': submission['created_at'].strftime("%m/%d/%Y, %H:%M:%S"),
-                    'challenge_id': submission['challenge_id'], 'planning_time': float(submission['planning_time']),
-                    'total_time': float(submission['total_time']),
-                    'execution_time': float(submission['execution_time']), 'is_correct': submission['is_correct'],
-                    'error_message': submission['error_message'], 'retry_times': submission['retry_times']}, 200
+            return make_response(jsonify({'user_name': submission['user_name'], 'query': submission['sql_query'],
+                                          'submission_id': submission_id,
+                                          'challenge_name': submission["challenge_name"],
+                                          'challenge_type': submission['challenge_type'],
+                                          'challenge_description': submission['description'],
+                                          'timestamp': submission['created_at'].strftime("%m/%d/%Y, %H:%M:%S"),
+                                          'challenge_id': submission['challenge_id'],
+                                          'planning_time': float(submission['planning_time']),
+                                          'total_time': float(submission['total_time']),
+                                          'execution_time': float(submission['execution_time']),
+                                          'is_correct': submission['is_correct'],
+                                          'error_message': submission['error_message'],
+                                          'retry_times': submission['retry_times']}), 200)
         except (Exception, Error) as error:
             print(f'Submission query submission failed, error: {error}')
             return abort(400, message="Invalid Server Error")
@@ -408,7 +411,7 @@ class ChallengeList(Resource):
                                    'challenge_description': challenge["challenge_description"],
                                    'challenge_type_description': challenge["challenge_type_description"],
                                    'timestamp': challenge['created_at'].strftime("%m/%d/%Y, %H:%M:%S")})
-            return challenges, 200
+            return make_response(jsonify(challenges), 200)
         except (Exception, Error) as error:
             print(f'Challenge list query failed, error: {error}')
             return abort(500, message="Internal Server Error")
@@ -449,10 +452,10 @@ class ChallengeList(Resource):
         except (Exception, Error) as error:
             print('Challenge insertion failed, error:', error)
             return abort(500, message="Internal Server Error")
-        return {'user_name': name, 'query': query, 'challenge_id': challenge_id,
-                'challenge_name': challenge_name, 'challenge_type': challenge_type,
-                'challenge_description': challenge_description,
-                'time_stamp': dt.strftime("%m/%d/%Y, %H:%M:%S")}, 201
+        return make_response(jsonify({'user_name': name, 'query': query, 'challenge_id': challenge_id,
+                                      'challenge_name': challenge_name, 'challenge_type': challenge_type,
+                                      'challenge_description': challenge_description,
+                                      'time_stamp': dt.strftime("%m/%d/%Y, %H:%M:%S")}), 201)
 
 
 class Challenge(Resource):
@@ -474,12 +477,13 @@ class Challenge(Resource):
             conn.close()
             if not challenge:
                 return abort(404, message=f"Challenge {challenge_id} doesn't exist")
-            return {'user_name': challenge['user_name'], 'query': challenge['sql_query'],
-                    'challenge_id': challenge_id,
-                    'challenge_name': challenge["challenge_name"], 'challenge_type': challenge["challenge_type"],
-                    'challenge_description': challenge["challenge_description"],
-                    'challenge_type_description': challenge["challenge_type_description"],
-                    'timestamp': challenge['created_at'].strftime("%m/%d/%Y, %H:%M:%S")}, 200
+            return make_response(jsonify({'user_name': challenge['user_name'], 'query': challenge['sql_query'],
+                                          'challenge_id': challenge_id,
+                                          'challenge_name': challenge["challenge_name"],
+                                          'challenge_type': challenge["challenge_type"],
+                                          'challenge_description': challenge["challenge_description"],
+                                          'challenge_type_description': challenge["challenge_type_description"],
+                                          'timestamp': challenge['created_at'].strftime("%m/%d/%Y, %H:%M:%S")}), 200)
 
         except (Exception, Error) as error:
             print(f'Challenge query failed, error: {error}')
@@ -502,7 +506,7 @@ class ChallengeTypeList(Resource):
                     {'user_name': challenge_type['user_name'], 'challenge_type': challenge_type['challenge_type'],
                      'description': challenge_type["description"],
                      'timestamp': challenge_type['created_at'].strftime("%m/%d/%Y, %H:%M:%S")})
-            return challenge_types, 200
+            return make_response(jsonify(challenge_types), 200)
         except (Exception, Error) as error:
             print(f'Challenge type list query failed, error: {error}')
             return abort(500, message="Internal Server Error")
@@ -537,9 +541,9 @@ class ChallengeTypeList(Resource):
         except (Exception, Error) as error:
             print('Challenge type insertion failed, error:', error)
             return abort(500, message="Internal Server Error")
-        return {'user_name': name, 'challenge_type': challenge_type,
-                'description': description,
-                'time_stamp': dt.strftime("%m/%d/%Y, %H:%M:%S")}, 201
+        return make_response(jsonify({'user_name': name, 'challenge_type': challenge_type,
+                                      'description': description,
+                                      'time_stamp': dt.strftime("%m/%d/%Y, %H:%M:%S")}), 201)
 
 
 class ChallengeType(Resource):
@@ -555,9 +559,9 @@ class ChallengeType(Resource):
             conn.close()
             if not record:
                 return abort(404, message=f"Challenge type {challenge_type} doesn't exist")
-            return {'user_name': record['user_name'], 'challenge_type': record['challenge_type'],
-                    'description': record["description"],
-                    'timestamp': record['created_at'].strftime("%m/%d/%Y, %H:%M:%S")}, 200
+            return make_response(jsonify({'user_name': record['user_name'], 'challenge_type': record['challenge_type'],
+                                          'description': record["description"],
+                                          'timestamp': record['created_at'].strftime("%m/%d/%Y, %H:%M:%S")}), 200)
         except (Exception, Error) as error:
             print(f'Challenge type query failed, error: {error}')
             return abort(500, message="Internal Server Error")
