@@ -29,7 +29,8 @@ const Challenges = () => {
 
       fetchLadder(challenge[0]);
     } else {
-      //login again
+      let path = "/studentcentre";
+      nav(path, {});
       console.log("hi");
     }
   };
@@ -48,6 +49,16 @@ const Challenges = () => {
       .then((response) => {
         let queries = response.data;
         console.log(queries);
+
+        queries.map((item) => {
+          //setting rank and rounding time
+          item.rank = item.rank + 1;
+          item.total_time = item.total_time.toFixed(4);
+        });
+
+        queries = queries.filter((item) => {
+          return item.is_correct != false;
+        });
 
         let send_data = {
           challenge: challenge,

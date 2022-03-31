@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Form, Button } from "react-bootstrap";
 import axios from "axios";
 
@@ -64,7 +64,7 @@ const StudentCentre = () => {
       setToken(token);
       localStorage.setItem("user", inpUserName);
       localStorage.setItem("token", token);
-      localStorage.setItem("token_timestamp", Date.now()/1000)
+      localStorage.setItem("token_timestamp", Date.now() / 1000);
 
       fetchSubmissionData(data);
     }
@@ -72,14 +72,6 @@ const StudentCentre = () => {
 
   const fetchSubmissionData = async (data) => {
     console.log(data);
-
-    // let config = {
-    //   headers: {
-    //     user: localStorage.getItem("user"),
-    //     token: localStorage.getItem("token"),
-    //   },
-    //   user_name: localStorage.getItem("user"),
-    // };
 
     const res = await axios
       .get("http://127.0.0.1:5000/submissions", {
@@ -89,31 +81,31 @@ const StudentCentre = () => {
 
     if (res) {
       const data = res.data;
-      console.log(data);
       if (!data.length) {
         setIfUserNameWrong(true);
       } else {
+        let state_data = { state: data };
+        localStorage.setItem("submission_data", JSON.stringify(state_data));
+
         let path = "/studentsubmissions";
-        nav(path, { state: data });
+        nav(path, state_data);
       }
     }
   };
 
-  //   const checkForbiddenKeywords = () => {
-  //     var qr = inpQuery;
-  //     var fkey = false;
+  useEffect(() => {
+    console.log(JSON.parse(localStorage.getItem("submission_data")));
 
-  //     dangerArray.every((item) => {
-  //       if (qr.includes(item)) {
-  //         fkey = true;
-  //         setDangerKeyword(true);
-  //         return false;
-  //       }
-  //       return true;
-  //     });
-
-  //     return fkey;
-  //   };
+    if (
+      Date.now() / 1000 - localStorage.getItem("token_timestamp") <= 600 &&
+      localStorage.getItem("submission_data") != null
+    ) {
+      let path = "/studentsubmissions";
+      nav(path, JSON.parse(localStorage.getItem("submission_data")));
+    } else {
+      localStorage.setItem("submission_data", JSON.stringify(null));
+    }
+  });
 
   const renderWrongMessage = () => {
     if (ifUserNameWrong) {
@@ -124,7 +116,7 @@ const StudentCentre = () => {
   };
 
   return (
-    <Form className="query-form" onSubmit={submitHandler}>
+    <Form className="query-form login-form" onSubmit={submitHandler}>
       <Form.Group className="mb-3">
         <Form.Label>Student User Name</Form.Label>
         <Form.Control
