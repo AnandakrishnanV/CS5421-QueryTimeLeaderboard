@@ -218,7 +218,6 @@ def benchmark_query(baseline_query: str, query: str, submission_id):
 
 
 class SubmissionList(Resource):
-    @token_required
     def get(self):
         args = submission_list_parser.parse_args()
         user_name = args['user_name']
@@ -345,7 +344,6 @@ class SubmissionList(Resource):
 
 
 class Submission(Resource):
-    @token_required
     def get(self, submission_id):
         try:
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
@@ -382,7 +380,6 @@ class Submission(Resource):
 
 
 class ChallengeList(Resource):
-    @token_required
     def get(self):
         args = challenge_list_parser.parse_args()
         user_name = args['user_name']
@@ -459,7 +456,6 @@ class ChallengeList(Resource):
 
 
 class Challenge(Resource):
-    @token_required
     def get(self, challenge_id):
         try:
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
@@ -491,7 +487,6 @@ class Challenge(Resource):
 
 
 class ChallengeTypeList(Resource):
-    @token_required
     def get(self):
         try:
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
@@ -548,7 +543,6 @@ class ChallengeTypeList(Resource):
 
 
 class ChallengeType(Resource):
-    @token_required
     def get(self, challenge_type):
         try:
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
