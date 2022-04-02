@@ -7,9 +7,10 @@
     -v /usr/redis:/bitnami/redis/data \
     bitnami/redis:latest`.
 3. Set up the main project by installing the dependencies listed in `requirements.txt` using `pip3`.
-4. `cd` into the BackEnd directory abd run the project using `python3 app.py`.
-5. Open another terminal tab and start the celery task queue worker using `celery -A app.celery worker --loglevel=INFO --concurrency 1 -P solo`. The `-P solo` option is given as a workaround to run celery properly on Windows. Drop it when running on Linux based machines.
-6. Open one more terminal tab and start the celery monitor agent using `celery -A app.celery flower`.
+4. Set up the required environment variables securely according the example given in set_up.sh. Replace the sample values with the actual application credentials. Note that the bash script is only given as a sample and its contents should not be stored on the server which could lead to potential security breach. Either copy the export command and run in the same bash shell where the application will be served or simply execute `. set_env.sh`.
+5. In the same shell instance, run the project by executing `python3 app.py`.
+6. Open another terminal tab and start the celery task queue worker using `celery -A app.celery worker --loglevel=INFO --concurrency 1 -P solo`. The `-P solo` option is given as a workaround to run celery properly on Windows. Drop it when running on Linux based machines.
+7. Open one more terminal tab and start the celery monitor agent using `celery -A app.celery flower`.
 
 ## Routes & Testing
 ### Challenge API

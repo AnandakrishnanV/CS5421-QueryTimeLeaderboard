@@ -1,3 +1,4 @@
+import os
 import uuid
 import jwt
 from datetime import datetime, timezone, timedelta
@@ -22,21 +23,21 @@ app = Flask(__name__)
 api = Api(app)
 logger = get_task_logger(__name__)
 
-app.config['celery_broker_url'] = 'redis://localhost:6379'
-app.config['celery_result_backend'] = 'redis://localhost:6379'
+app.config['celery_broker_url'] = os.environ.get("REDIS_URL")
+app.config['celery_result_backend'] = os.environ.get("REDIS_URL")
 
-app.config['SECRET_KEY'] = '8454e5a14e6c4a3490e85f8cd0737fa0'
-app.config['APP_DB_HOST'] = 'localhost'
-app.config['APP_DB_NAME'] = 'tuning'
-app.config['APP_DB_USER'] = 'test'
-app.config['APP_DB_PASSWORD'] = 'test'
-
-app.config['BENCHMARK_DB_HOST'] = 'localhost'
-# allow only select
-app.config['BENCHMARK_DB_USER'] = 'read_user'
-app.config['BENCHMARK_DB_PASSWORD'] = 'read_user'
-app.config['BENCHMARK_DB_NAME'] = 'tuning'
-app.config['BENCHMARK_TIMEOUT'] = 5000
+app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY")
+app.config['APP_DB_HOST'] = os.environ.get("APP_DB_HOST")
+app.config['APP_DB_PORT'] = os.environ.get("APP_DB_PORT")
+app.config['APP_DB_NAME'] = os.environ.get("APP_DB_NAME")
+app.config['APP_DB_USER'] = os.environ.get("APP_DB_USER")
+app.config['APP_DB_PASSWORD'] = os.environ.get("APP_DB_PASSWORD")
+app.config['BENCHMARK_DB_HOST'] = os.environ.get("BENCHMARK_DB_HOST")
+app.config['BENCHMARK_DB_PORT'] = os.environ.get("BENCHMARK_DB_PORT")
+app.config['BENCHMARK_DB_USER'] = os.environ.get("BENCHMARK_DB_USER")
+app.config['BENCHMARK_DB_PASSWORD'] = os.environ.get("BENCHMARK_DB_PASSWORD")
+app.config['BENCHMARK_DB_NAME'] = os.environ.get("BENCHMARK_DB_NAME")
+app.config['BENCHMARK_TIMEOUT'] = os.environ.get("BENCHMARK_TIMEOUT")
 
 CHALLENGE_TYPE_SLOWEST_QUERY = 1
 
@@ -98,7 +99,8 @@ def token_required(func):
 def check_admin(user_name: str):
     admin_query = 'SELECT is_admin FROM users WHERE user_name = %s'
     conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                             user=app.config.get('APP_DB_USER'), password=app.config.get('APP_DB_PASSWORD'))
+                             user=app.config.get('APP_DB_USER'), password=app.config.get('APP_DB_PASSWORD'),
+                             port=app.config.get('APP_DB_PORT'))
     cur = execute_query(db_conn=conn, query=admin_query, values=(user_name,))
     is_admin = cur.fetchone()
     cur.close()
@@ -117,6 +119,7 @@ class Login(Resource):
         try:
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config['APP_DB_NAME'],
                                      user=app.config.get('APP_DB_USER'), password=app.config.get('APP_DB_PASSWORD'),
+                                     port=app.config.get('APP_DB_PORT'),
                                      readonly=True)
             cur = execute_query(db_conn=conn, query='SELECT * FROM users WHERE user_name = %s ',
                                 values=(user_name,))
@@ -149,6 +152,7 @@ def benchmark_query(baseline_query: str, query: str, submission_id):
         conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
                                  user='read_user',
                                  password='read_user',
+                                 port=app.config.get('BENCHMARK_DB_PORT'),
                                  timeout=app.config.get('BENCHMARK_TIMEOUT'), readonly=True)
         cur = execute_query(db_conn=conn, query=f"EXPLAIN ANALYZE {query}")
         explain_result = cur.fetchall()
@@ -165,6 +169,7 @@ def benchmark_query(baseline_query: str, query: str, submission_id):
                 dt = datetime.now(timezone.utc)
                 conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
                                          user=app.config.get('APP_DB_USER'),
+                                         port=app.config.get('APP_DB_PORT'),
                                          password=app.config.get('APP_DB_PASSWORD'))
                 cur = execute_query(db_conn=conn,
                                     query="UPDATE submission SET updated_at = %s, error_message = 'query timeout' WHERE submission_id = %s",
@@ -185,6 +190,7 @@ def benchmark_query(baseline_query: str, query: str, submission_id):
         conn = get_db_connection(host=app.config.get('BENCHMARK_DB_HOST'), database=app.config.get('BENCHMARK_DB_NAME'),
                                  user=app.config.get('BENCHMARK_DB_USER'),
                                  password=app.config.get('BENCHMARK_DB_PASSWORD'),
+                                 port=app.config.get('BENCHMARK_DB_PORT'),
                                  timeout=app.config.get('BENCHMARK_TIMEOUT') * 2, readonly=True)
         cur = execute_query(db_conn=conn, query=diff_query)
         result = cur.fetchall()[0][0]
@@ -203,6 +209,7 @@ def benchmark_query(baseline_query: str, query: str, submission_id):
     total_time = planning_time + execution_time
     try:
         conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
+                                 port=app.config.get('APP_DB_PORT'),
                                  user=app.config.get('APP_DB_USER'), password=app.config.get('APP_DB_PASSWORD'))
         cur = execute_query(db_conn=conn,
                             query='UPDATE submission SET is_correct = %s, updated_at = %s, planning_time = %s, execution_time = %s, total_time = %s WHERE submission_id = %s',
@@ -261,7 +268,7 @@ class SubmissionList(Resource):
                         'WHERE s.challenge_id = %s'
                 values = (challenge_id,)
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'),
+                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
                                      password=app.config.get('APP_DB_PASSWORD'), readonly=True)
             cur = execute_query(db_conn=conn, query=query, values=values)
             submission_list = cur.fetchall()
@@ -308,7 +315,7 @@ class SubmissionList(Resource):
         try:
             # challenge id must be valid, i.e. a challenge with this id must exist
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'),
+                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
                                      password=app.config.get('APP_DB_PASSWORD'))
             cur = execute_query(db_conn=conn, query='SELECT * FROM challenge WHERE challenge_id = %s',
                                 values=(challenge_id,))
@@ -326,7 +333,7 @@ class SubmissionList(Resource):
             prepared_query = """ INSERT INTO submission (submission_id, user_name, created_at, updated_at, challenge_id, sql_query) VALUES (%s, %s, %s, %s, %s, %s)"""
             record = (submission_id, name, dt, dt, challenge_id, query)
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'),
+                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
                                      password=app.config.get('APP_DB_PASSWORD'))
             cur = execute_query(db_conn=conn, query=prepared_query, values=record)
             count = cur.rowcount
@@ -346,7 +353,7 @@ class Submission(Resource):
     def get(self, submission_id):
         try:
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'),
+                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
                                      password=app.config.get('APP_DB_PASSWORD'), readonly=True)
             query = 'SELECT s.user_name AS user_name, s.sql_query AS sql_query, s.submission_id AS submission_id, ' \
                     'c.challenge_name AS challenge_name, c.challenge_type AS challenge_type, ' \
@@ -388,7 +395,7 @@ class ChallengeList(Resource):
         user_name = args['user_name']
         try:
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'),
+                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
                                      password=app.config.get('APP_DB_PASSWORD'), readonly=True)
             base_query = 'SELECT c1.user_name as user_name, c1.sql_query as sql_query, ' \
                          'c1.challenge_name as challenge_name, c1.description as challenge_description, ' \
@@ -442,7 +449,7 @@ class ChallengeList(Resource):
             prepared_query = """ INSERT INTO challenge (user_name, created_at, updated_at, challenge_id, challenge_name, challenge_type, description, sql_query) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
             record = (name, dt, dt, challenge_id, challenge_name, challenge_type, challenge_description, query)
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'),
+                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
                                      password=app.config.get('APP_DB_PASSWORD'))
             cur = execute_query(db_conn=conn, query=prepared_query, values=record)
             count = cur.rowcount
@@ -462,7 +469,7 @@ class Challenge(Resource):
     def get(self, challenge_id):
         try:
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'),
+                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
                                      password=app.config.get('APP_DB_PASSWORD'), readonly=True)
             query = 'SELECT c1.user_name as user_name, c1.sql_query as sql_query, ' \
                     'c1.challenge_name as challenge_name, c1.description as challenge_description, ' \
@@ -494,7 +501,7 @@ class ChallengeTypeList(Resource):
     def get(self):
         try:
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'),
+                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
                                      password=app.config.get('APP_DB_PASSWORD'), readonly=True)
             cur = execute_query(db_conn=conn, query='SELECT * FROM challenge_type')
             challenge_type_list = cur.fetchall()
@@ -531,7 +538,7 @@ class ChallengeTypeList(Resource):
             prepared_query = """ INSERT INTO challenge_type (user_name, created_at, updated_at, challenge_type, description) VALUES (%s, %s, %s, %s, %s)"""
             record = (name, dt, dt, challenge_type, description)
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'),
+                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
                                      password=app.config.get('APP_DB_PASSWORD'))
             cur = execute_query(db_conn=conn, query=prepared_query, values=record)
             count = cur.rowcount
@@ -550,7 +557,7 @@ class ChallengeType(Resource):
     def get(self, challenge_type):
         try:
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'),
+                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
                                      password=app.config.get('APP_DB_PASSWORD'), readonly=True)
             cur = execute_query(db_conn=conn, query='SELECT * FROM challenge_type WHERE challenge_type = %s',
                                 values=(challenge_type,))

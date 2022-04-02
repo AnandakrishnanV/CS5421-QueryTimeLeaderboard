@@ -4,11 +4,12 @@ import psycopg2.extras
 import sqlvalidator
 
 
-def get_db_connection(host: str, database: str, user: str, password: str, timeout: int = 5000,
+def get_db_connection(host: str, database: str, user: str, password: str, port: int, timeout: int = 5000,
                       readonly: bool = False, autocommit: bool = True):
     options = f'-c statement_timeout={timeout}'
     conn = psycopg2.connect(host=host,
                             database=database,
+                            port=port,
                             user=user,
                             password=password, options=options)
     conn.set_session(readonly=readonly, autocommit=autocommit)
@@ -28,10 +29,10 @@ def execute_query(db_conn, query, **kwargs):
         raise error
     return cur
 
+
 def validate_sql_syntax(query: str):
     sql_query = sqlvalidator.parse(query)
     if not sql_query.is_valid():
         print(f'invalid query: {query}, errors: {sql_query.errors}')
         return False
     return True
-
