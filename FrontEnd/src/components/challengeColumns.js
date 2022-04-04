@@ -1,8 +1,8 @@
 export const C_COL = [
     
     {
-        Header: "Challenge Id",
-        accessor: 'challenge_id'
+        Header: "Challenge No",
+        accessor: 'challenge_no'
     },
     {
         Header: "Challenge Name",

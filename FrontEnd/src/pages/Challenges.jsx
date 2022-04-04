@@ -14,6 +14,7 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 
 const Challenges = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [chalData, setChalData] = useState([]);
 
   let nav = useNavigate();
   const handleRowClick = (event) => {
@@ -22,14 +23,16 @@ const Challenges = () => {
     if (isLoggedIn) {
       console.log(event.target.parentElement.firstChild.textContent);
       let clickId = event.target.parentElement.firstChild.textContent;
-      var challenge = challengeData.filter((obj) => {
-        return obj.challenge_id === clickId;
+      console.log(chalData)
+      var challenge = chalData.filter((obj) => {
+        return obj.challenge_no == clickId;
       });
       console.log(challenge);
 
       fetchLadder(challenge[0]);
     } else {
-      //login again
+      let path = "/studentcentre";
+      nav(path, {});
       console.log("hi");
     }
   };
@@ -48,6 +51,16 @@ const Challenges = () => {
       .then((response) => {
         let queries = response.data;
         console.log(queries);
+
+        queries.map((item) => {
+          //setting rank and rounding time
+          item.rank = item.rank + 1;
+          item.total_time = item.total_time.toFixed(4);
+        });
+
+        queries = queries.filter((item) => {
+          return item.is_correct != false;
+        });
 
         let send_data = {
           challenge: challenge,
@@ -75,7 +88,7 @@ const Challenges = () => {
     }
   };
 
-  const [chalData, setChalData] = useState([]);
+ 
   const fetchChalData = async () => {
     const res = await axios
       .get(" http://127.0.0.1:5000/challenges")
@@ -84,6 +97,8 @@ const Challenges = () => {
     if (res) {
       const data = res.data;
       console.log(data);
+      data.forEach((item, index) => (item.challenge_no = index + 1));
+
       setChalData(
         data.map((item) => ({
           ...item,
