@@ -324,11 +324,13 @@ class SubmissionList(Resource):
             challenge = cur.fetchone()
             cur.close()
             conn.close()
-            if not challenge:
-                return abort(404, message=f"Challenge {challenge_id} doesn't exist")
         except (Exception, Error) as error:
             print(f'Submission query challenge failed, error: {error}')
             return abort(500, message="Internal Server Error")
+        if not challenge:
+            return abort(404, message=f"Challenge {challenge_id} doesn't exist")
+        elif challenge['is_deleted']:
+            return abort(400, message=f"Challenge {challenge_id} already deleted")
         try:
             dt = datetime.now(timezone.utc)
             submission_id = 'sub_' + str(uuid.uuid4())
