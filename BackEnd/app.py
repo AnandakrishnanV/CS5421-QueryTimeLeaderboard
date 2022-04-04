@@ -235,7 +235,7 @@ class SubmissionList(Resource):
                     'c.description AS description, s.created_at AS created_at, s.challenge_id AS challenge_id, ' \
                     's.planning_time AS planning_time, s.execution_time AS execution_time, ' \
                     's.total_time AS total_time, s.is_correct AS is_correct, s.error_message AS error_message, ' \
-                    's.retry_times AS retry_times ' \
+                    's.retry_times AS retry_times, c.is_deleted as is_deleted ' \
                     'FROM submission s join challenge c on s.challenge_id = c.challenge_id'
             values = ()
             if user_name and challenge_id:
@@ -244,7 +244,7 @@ class SubmissionList(Resource):
                         'c.description AS description, s.created_at AS created_at, s.challenge_id AS challenge_id, ' \
                         's.planning_time AS planning_time, s.execution_time AS execution_time, ' \
                         's.total_time AS total_time, s.is_correct AS is_correct, s.error_message AS error_message, ' \
-                        's.retry_times AS retry_times ' \
+                        's.retry_times AS retry_times, c.is_deleted as is_deleted ' \
                         'FROM submission s join challenge c on s.challenge_id = c.challenge_id ' \
                         'WHERE s.user_name = %s and s.challenge_id = %s'
                 values = (user_name, challenge_id)
@@ -254,7 +254,7 @@ class SubmissionList(Resource):
                         'c.description AS description, s.created_at AS created_at, s.challenge_id AS challenge_id, ' \
                         's.planning_time AS planning_time, s.execution_time AS execution_time, ' \
                         's.total_time AS total_time, s.is_correct AS is_correct, s.error_message AS error_message, ' \
-                        's.retry_times AS retry_times ' \
+                        's.retry_times AS retry_times, c.is_deleted as is_deleted ' \
                         'FROM submission s join challenge c on s.challenge_id = c.challenge_id ' \
                         'WHERE s.user_name = %s'
                 values = (user_name,)
@@ -264,7 +264,7 @@ class SubmissionList(Resource):
                         'c.description AS description, s.created_at AS created_at, s.challenge_id AS challenge_id, ' \
                         's.planning_time AS planning_time, s.execution_time AS execution_time, ' \
                         's.total_time AS total_time, s.is_correct AS is_correct, s.error_message AS error_message, ' \
-                        's.retry_times AS retry_times ' \
+                        's.retry_times AS retry_times, c.is_deleted as is_deleted ' \
                         'FROM submission s join challenge c on s.challenge_id = c.challenge_id ' \
                         'WHERE s.challenge_id = %s'
                 values = (challenge_id,)
@@ -290,7 +290,8 @@ class SubmissionList(Resource):
                                     'total_time': float(submission['total_time']),
                                     'is_correct': submission['is_correct'],
                                     'error_message': submission['error_message'],
-                                    'retry_times': submission['retry_times']})
+                                    'retry_times': submission['retry_times'],
+                                    'is_deleted': submission['is_deleted']})
                 challenge_type = submission['challenge_type']
             submissions = sorted(submissions, key=lambda k: k['is_correct'], reverse=True)
             submissions = sorted(submissions, key=lambda k: k['total_time'],
@@ -362,7 +363,7 @@ class Submission(Resource):
                     'c.description AS description, s.created_at AS created_at, s.challenge_id AS challenge_id, ' \
                     's.planning_time AS planning_time, s.execution_time AS execution_time, ' \
                     's.total_time AS total_time, s.is_correct AS is_correct, s.error_message AS error_message, ' \
-                    's.retry_times AS retry_times ' \
+                    's.retry_times AS retry_times, c.is_deleted as is_deleted ' \
                     'FROM submission s join challenge c on s.challenge_id = c.challenge_id ' \
                     'WHERE s.submission_id = %s'
             cur = execute_query(db_conn=conn,
@@ -388,7 +389,8 @@ class Submission(Resource):
                                       'execution_time': float(submission['execution_time']),
                                       'is_correct': submission['is_correct'],
                                       'error_message': submission['error_message'],
-                                      'retry_times': submission['retry_times']}), 200)
+                                      'retry_times': submission['retry_times'],
+                                      'is_deleted': submission['is_deleted']}), 200)
 
 
 class ChallengeList(Resource):
