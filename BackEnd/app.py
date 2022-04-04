@@ -13,9 +13,6 @@ from util import RetryableError, BenchMarkTask, process_error, NonRetryableError
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# TODO: receive configs and credentials via command line arguments or environment variables
-
-
 # create readonly user or grant only select permission for executing benchmarking queries to avoid injection
 # write permission is given to admin users like the professor or TAs
 
@@ -38,6 +35,7 @@ app.config['BENCHMARK_DB_USER'] = os.environ.get("BENCHMARK_DB_USER")
 app.config['BENCHMARK_DB_PASSWORD'] = os.environ.get("BENCHMARK_DB_PASSWORD")
 app.config['BENCHMARK_DB_NAME'] = os.environ.get("BENCHMARK_DB_NAME")
 app.config['BENCHMARK_TIMEOUT'] = os.environ.get("BENCHMARK_TIMEOUT")
+app.config['JWT_CONFIG'] = os.environ.get("JWT_CONFIG")  # POST_ONLY OR ALL
 
 CHALLENGE_TYPE_SLOWEST_QUERY = 1
 
@@ -76,9 +74,11 @@ DIFF_QUERY_TEMPLATE = '''SELECT CASE WHEN COUNT(*) = 0 THEN 'Same' ELSE 'Differe
 
 
 def token_required(func):
-    # decorator factory which invoks update_wrapper() method and passes decorated function as an argument
+    # decorator factory which invokes update_wrapper() method and passes decorated function as an argument
     @wraps(func)
     def decorated(*args, **kwargs):
+        if app.config['JWT_CONFIG'] == 'POST_ONLY' and request.method == 'GET':
+            return func(*args, **kwargs)
         token = request.headers.get('token')
         user_name = request.headers.get('user')
         if not token:
@@ -224,6 +224,7 @@ def benchmark_query(baseline_query: str, query: str, submission_id):
 
 
 class SubmissionList(Resource):
+    @token_required
     def get(self):
         args = submission_list_parser.parse_args()
         user_name = args['user_name']
@@ -350,6 +351,7 @@ class SubmissionList(Resource):
 
 
 class Submission(Resource):
+    @token_required
     def get(self, submission_id):
         try:
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
@@ -369,27 +371,28 @@ class Submission(Resource):
             submission = cur.fetchone()
             cur.close()
             conn.close()
-            if submission is None:
-                return abort(404, message=f"Submission {submission_id} doesn't exist")
-            return make_response(jsonify({'user_name': submission['user_name'], 'query': submission['sql_query'],
-                                          'submission_id': submission_id,
-                                          'challenge_name': submission["challenge_name"],
-                                          'challenge_type': submission['challenge_type'],
-                                          'challenge_description': submission['description'],
-                                          'timestamp': submission['created_at'].strftime("%m/%d/%Y, %H:%M:%S"),
-                                          'challenge_id': submission['challenge_id'],
-                                          'planning_time': float(submission['planning_time']),
-                                          'total_time': float(submission['total_time']),
-                                          'execution_time': float(submission['execution_time']),
-                                          'is_correct': submission['is_correct'],
-                                          'error_message': submission['error_message'],
-                                          'retry_times': submission['retry_times']}), 200)
         except (Exception, Error) as error:
             print(f'Submission query submission failed, error: {error}')
             return abort(400, message="Invalid Server Error")
+        if submission is None:
+            return abort(404, message=f"Submission {submission_id} doesn't exist")
+        return make_response(jsonify({'user_name': submission['user_name'], 'query': submission['sql_query'],
+                                      'submission_id': submission_id,
+                                      'challenge_name': submission["challenge_name"],
+                                      'challenge_type': submission['challenge_type'],
+                                      'challenge_description': submission['description'],
+                                      'timestamp': submission['created_at'].strftime("%m/%d/%Y, %H:%M:%S"),
+                                      'challenge_id': submission['challenge_id'],
+                                      'planning_time': float(submission['planning_time']),
+                                      'total_time': float(submission['total_time']),
+                                      'execution_time': float(submission['execution_time']),
+                                      'is_correct': submission['is_correct'],
+                                      'error_message': submission['error_message'],
+                                      'retry_times': submission['retry_times']}), 200)
 
 
 class ChallengeList(Resource):
+    @token_required
     def get(self):
         args = challenge_list_parser.parse_args()
         user_name = args['user_name']
@@ -400,7 +403,7 @@ class ChallengeList(Resource):
             base_query = 'SELECT c1.user_name as user_name, c1.sql_query as sql_query, ' \
                          'c1.challenge_name as challenge_name, c1.description as challenge_description, ' \
                          'c2.description as challenge_type_description, c1.challenge_type as challenge_type, ' \
-                         'c1.challenge_id as challenge_id, c1.created_at as created_at' \
+                         'c1.challenge_id as challenge_id, c1.created_at as created_at, c1.is_deleted as is_deleted' \
                          ' FROM challenge c1 JOIN challenge_type c2 ON c1.challenge_type = c2.challenge_type'
             filtered_query = base_query + ' WHERE c1.user_name = %s'
             cur = execute_query(db_conn=conn, query=filtered_query,
@@ -417,7 +420,8 @@ class ChallengeList(Resource):
                                    'challenge_type': challenge["challenge_type"],
                                    'challenge_description': challenge["challenge_description"],
                                    'challenge_type_description': challenge["challenge_type_description"],
-                                   'timestamp': challenge['created_at'].strftime("%m/%d/%Y, %H:%M:%S")})
+                                   'timestamp': challenge['created_at'].strftime("%m/%d/%Y, %H:%M:%S"),
+                                   'is_deleted': challenge['is_deleted']})
             return make_response(jsonify(challenges), 200)
         except (Exception, Error) as error:
             print(f'Challenge list query failed, error: {error}')
@@ -466,6 +470,7 @@ class ChallengeList(Resource):
 
 
 class Challenge(Resource):
+    @token_required
     def get(self, challenge_id):
         try:
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
@@ -474,7 +479,7 @@ class Challenge(Resource):
             query = 'SELECT c1.user_name as user_name, c1.sql_query as sql_query, ' \
                     'c1.challenge_name as challenge_name, c1.description as challenge_description, ' \
                     'c2.description as challenge_type_description, c1.challenge_type as challenge_type, ' \
-                    'c1.updated_at as updated_at' \
+                    'c1.created_at as created_at, c1.is_deleted as is_deleted' \
                     ' FROM challenge c1 JOIN challenge_type c2 ON c1.challenge_type = c2.challenge_type ' \
                     'WHERE challenge_id = %s'
             cur = execute_query(db_conn=conn, query=query,
@@ -482,22 +487,43 @@ class Challenge(Resource):
             challenge = cur.fetchone()
             cur.close()
             conn.close()
-            if not challenge:
-                return abort(404, message=f"Challenge {challenge_id} doesn't exist")
-            return make_response(jsonify({'user_name': challenge['user_name'], 'query': challenge['sql_query'],
-                                          'challenge_id': challenge_id,
-                                          'challenge_name': challenge["challenge_name"],
-                                          'challenge_type': challenge["challenge_type"],
-                                          'challenge_description': challenge["challenge_description"],
-                                          'challenge_type_description': challenge["challenge_type_description"],
-                                          'timestamp': challenge['created_at'].strftime("%m/%d/%Y, %H:%M:%S")}), 200)
-
         except (Exception, Error) as error:
             print(f'Challenge query failed, error: {error}')
             return abort(500, message="Internal Server Error")
+        if not challenge:
+            return abort(404, message=f"Challenge {challenge_id} doesn't exist")
+        return make_response(jsonify({'user_name': challenge['user_name'], 'query': challenge['sql_query'],
+                                      'challenge_id': challenge_id,
+                                      'challenge_name': challenge["challenge_name"],
+                                      'challenge_type': challenge["challenge_type"],
+                                      'challenge_description': challenge["challenge_description"],
+                                      'challenge_type_description': challenge["challenge_type_description"],
+                                      'timestamp': challenge['created_at'].strftime("%m/%d/%Y, %H:%M:%S"),
+                                      'is_deleted': challenge['is_deleted']}), 200)
+
+    @token_required
+    def delete(self, challenge_id):
+        try:
+            dt = datetime.now(timezone.utc)
+            conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
+                                     user=app.config.get('APP_DB_USER'),
+                                     port=app.config.get('APP_DB_PORT'),
+                                     password=app.config.get('APP_DB_PASSWORD'))
+            cur = execute_query(db_conn=conn,
+                                query="UPDATE challenge SET updated_at = %s, is_deleted = %s WHERE challenge_id = %s",
+                                values=(dt, True, challenge_id))
+            count = cur.rowcount
+            cur.close()
+            conn.close()
+            logger.info(f"{count} records successfully updated for challenge table")
+        except (Exception, Error) as error:
+            logger.warning(f'Update challenge failed, error: {error}')
+            raise process_error(error)
+        return make_response(jsonify({}), 204)
 
 
 class ChallengeTypeList(Resource):
+    @token_required
     def get(self):
         try:
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
@@ -554,6 +580,7 @@ class ChallengeTypeList(Resource):
 
 
 class ChallengeType(Resource):
+    @token_required
     def get(self, challenge_type):
         try:
             conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
@@ -564,14 +591,14 @@ class ChallengeType(Resource):
             record = cur.fetchone()
             cur.close()
             conn.close()
-            if not record:
-                return abort(404, message=f"Challenge type {challenge_type} doesn't exist")
-            return make_response(jsonify({'user_name': record['user_name'], 'challenge_type': record['challenge_type'],
-                                          'description': record["description"],
-                                          'timestamp': record['created_at'].strftime("%m/%d/%Y, %H:%M:%S")}), 200)
         except (Exception, Error) as error:
             print(f'Challenge type query failed, error: {error}')
             return abort(500, message="Internal Server Error")
+        if not record:
+            return abort(404, message=f"Challenge type {challenge_type} doesn't exist")
+        return make_response(jsonify({'user_name': record['user_name'], 'challenge_type': record['challenge_type'],
+                                      'description': record["description"],
+                                      'timestamp': record['created_at'].strftime("%m/%d/%Y, %H:%M:%S")}), 200)
 
 
 api.add_resource(Submission, '/submission/<submission_id>')

@@ -28,6 +28,7 @@ CREATE TABLE challenge (
   updated_at timestamp DEFAULT current_timestamp(),
   sql_query TEXT,
   description TEXT,
+  is_deleted bool DEFAULT FALSE,
   CONSTRAINT fk_challenge_type
       FOREIGN KEY(challenge_type)
 	  REFERENCES challenge_type(challenge_type)
