@@ -2,15 +2,19 @@ import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import QueryForm from "../components/QueryForm/QueryForm";
 import ChallengeTable from "../components/Table/ChallengeTable";
+import PageModal from "./PageModal";
 import axios from "axios";
 import "./ChallengeOne.css";
+import { Card } from "react-bootstrap";
 
 const ChallengeOnePage = (props) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [boardData, setBoardData] = useState([]);
+  const [ifError, setIfError] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const { state } = useLocation();
   const saveEntryDataHandler = (inpEntryData) => {
+    setIfError(false);
     const entryData = {
       ...inpEntryData,
       user_name: state.user,
@@ -38,11 +42,16 @@ const ChallengeOnePage = (props) => {
       },
     };
 
-    const res = await axios.post(
-      "http://127.0.0.1:5000/submissions",
-      data,
-      config
-    );
+    const res = await axios
+      .post("http://127.0.0.1:5000/submissions", data, config)
+      .then((response) => {
+        console.log(response);
+      })
+      .catch((err) => {
+        setIfError(true);
+        console.log(err.response.data.message);
+        setErrorMsg(err.response.data.message);
+      });
   };
 
   const checkLogin = () => {
@@ -52,6 +61,23 @@ const ChallengeOnePage = (props) => {
       setIsLoggedIn(false);
     } else {
       setIsLoggedIn(true);
+    }
+  };
+
+  const renderWarningMessage = (msg) => {
+    if (ifError) {
+      return (
+        <div>
+          <Card className="error-card">
+            <Card.Header as="h5">Error</Card.Header>
+            <Card.Body>
+              <Card.Text>{errorMsg}</Card.Text>
+            </Card.Body>
+          </Card>
+        </div>
+      );
+    } else {
+      return <div></div>;
     }
   };
 
@@ -76,6 +102,7 @@ const ChallengeOnePage = (props) => {
         <h2>Make A New Submission</h2>
       </div>
       <QueryForm onSaveQueryData={saveEntryDataHandler} />
+      {renderWarningMessage()}
     </div>
   );
 };

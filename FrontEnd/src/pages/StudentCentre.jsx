@@ -7,8 +7,8 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import "./StudentCentre.css";
 
 const StudentCentre = () => {
-  const [inpUserName, setInpUserName] = useState("stu1");
-  const [inpPassword, setInpPassword] = useState("jw8s0F4");
+  const [inpUserName, setInpUserName] = useState("");
+  const [inpPassword, setInpPassword] = useState("");
   const [ifUserNameWrong, setIfUserNameWrong] = useState(false);
   const [token, setToken] = useState("");
 
@@ -98,10 +98,14 @@ const StudentCentre = () => {
 
     if (
       Date.now() / 1000 - localStorage.getItem("token_timestamp") <= 600 &&
-      localStorage.getItem("submission_data") != null
+      localStorage.getItem("submission_data") &&
+      localStorage.getItem("submission_data") !== null
     ) {
-      let path = "/studentsubmissions";
-      nav(path, JSON.parse(localStorage.getItem("submission_data")));
+      let dat = localStorage.getItem("submission_data");
+      if (JSON.parse(dat)) {
+        let path = "/studentsubmissions";
+        nav(path, JSON.parse(localStorage.getItem("submission_data")));
+      }
     } else {
       localStorage.setItem("submission_data", JSON.stringify(null));
     }

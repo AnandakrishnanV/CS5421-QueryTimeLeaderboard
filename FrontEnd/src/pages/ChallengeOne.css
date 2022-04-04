@@ -1,5 +1,11 @@
-.challenge-text{
-    padding-top: 2rem;
-    width: 70%;
-    margin: auto;
+.challenge-text {
+  padding-top: 2rem;
+  width: 70%;
+  margin: auto;
+}
+
+.error-card {
+  padding-top: 30px;
+  width: 30%;
+  margin: auto;
 }
