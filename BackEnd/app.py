@@ -35,6 +35,7 @@ app.config['BENCHMARK_DB_USER'] = os.environ.get("BENCHMARK_DB_USER")
 app.config['BENCHMARK_DB_PASSWORD'] = os.environ.get("BENCHMARK_DB_PASSWORD")
 app.config['BENCHMARK_DB_NAME'] = os.environ.get("BENCHMARK_DB_NAME")
 app.config['BENCHMARK_TIMEOUT'] = os.environ.get("BENCHMARK_TIMEOUT")
+app.config['JWT_VALIDITY_PERIOD'] = os.environ.get("JWT_VALIDITY_PERIOD", 30)
 app.config['JWT_CONFIG'] = os.environ.get("JWT_CONFIG")  # POST_ONLY OR ALL
 
 CHALLENGE_TYPE_SLOWEST_QUERY = 1
@@ -134,7 +135,7 @@ class Login(Resource):
 
                 token = jwt.encode({
                     'user_name': user_name,
-                    'exp': datetime.utcnow() + timedelta(minutes=30)
+                    'exp': datetime.utcnow() + timedelta(minutes=app.config['JWT_VALIDITY_PERIOD'])
                 },
                     app.config['SECRET_KEY'])
                 return make_response(jsonify({'token': token, 'is_admin': current_user['is_admin']}), 200)
