@@ -85,6 +85,15 @@ const Challenges = (props) => {
       } else {
         setIsLoggedIn(true);
       }
+    } else if (localStorage.getItem("tt_token_timestamp")) {
+      let token_time = localStorage.getItem("tt_token_timestamp");
+      let current_time = Date.now() / 1000;
+
+      if (current_time - token_time >= 1200) {
+        setIsLoggedIn(false);
+      } else {
+        setIsLoggedIn(true);
+      }
     }
   };
 
@@ -104,10 +113,10 @@ const Challenges = (props) => {
         }
       });
 
-      let table_data = data
+      let table_data = data;
 
       if (!props.from) {
-        table_data = data.filter(item => item.is_deleted != true)
+        table_data = data.filter((item) => item.is_deleted != true);
       }
 
       setChalData(

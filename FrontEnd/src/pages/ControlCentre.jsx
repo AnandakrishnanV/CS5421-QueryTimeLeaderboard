@@ -89,7 +89,7 @@ const ControlCentre = (props) => {
         if (response.data.is_admin) {
           localStorage.setItem("tt_user", inpUserName);
           localStorage.setItem("tt_token", response.data.token);
-          localStorage.setItem("token_timestamp", Date.now());
+          localStorage.setItem("tt_token_timestamp", Date.now());
 
           setIfPass(true);
         }
@@ -101,7 +101,7 @@ const ControlCentre = (props) => {
 
   const checkLogin = () => {
     if (
-      Date.now() / 1000 - localStorage.getItem("token_timestamp") <= 1200 &&
+      Date.now() / 1000 - localStorage.getItem("tt_token_timestamp") <= 1200 &&
       localStorage.getItem("tt_token") &&
       localStorage.getItem("tt_token") !== null
     ) {
