@@ -80,7 +80,7 @@ const Challenges = (props) => {
       let token_time = localStorage.getItem("token_timestamp");
       let current_time = Date.now() / 1000;
 
-      if (current_time - token_time >= 1200) {
+      if (current_time - token_time >= 1800) {
         setIsLoggedIn(false);
       } else {
         setIsLoggedIn(true);
@@ -89,7 +89,7 @@ const Challenges = (props) => {
       let token_time = localStorage.getItem("tt_token_timestamp");
       let current_time = Date.now() / 1000;
 
-      if (current_time - token_time >= 1200) {
+      if (current_time - token_time >= 1800) {
         setIsLoggedIn(false);
       } else {
         setIsLoggedIn(true);

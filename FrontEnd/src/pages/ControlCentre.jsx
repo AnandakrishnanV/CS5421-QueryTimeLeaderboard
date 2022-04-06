@@ -101,7 +101,7 @@ const ControlCentre = (props) => {
 
   const checkLogin = () => {
     if (
-      Date.now() / 1000 - localStorage.getItem("tt_token_timestamp") <= 1200 &&
+      Date.now() / 1000 - localStorage.getItem("tt_token_timestamp") <= 1800 &&
       localStorage.getItem("tt_token") &&
       localStorage.getItem("tt_token") !== null
     ) {
