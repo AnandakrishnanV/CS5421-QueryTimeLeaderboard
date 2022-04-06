@@ -23,7 +23,7 @@ def get_benchmark_db_connection(host: str, database: str, user: str, password: s
                             port=port,
                             user=user,
                             password=password,
-                            options=f'-c statement_timeout={timeout}') if timeout \
+                            options=f'-c statement_timeout={timeout}') if timeout <= 0 \
         else psycopg2.connect(host=host,
                               database=database,
                               port=port,
