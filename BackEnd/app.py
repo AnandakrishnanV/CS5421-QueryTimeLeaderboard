@@ -293,10 +293,10 @@ class SubmissionList(Resource):
                                     'retry_times': submission['retry_times'],
                                     'is_deleted': submission['is_deleted']})
                 challenge_type = submission['challenge_type']
-            submissions = sorted(submissions, key=lambda k: k['is_correct'], reverse=True)
+            submissions = sorted(submissions, key=lambda k: k['timestamp'], reverse=False)
             submissions = sorted(submissions, key=lambda k: k['total_time'],
                                  reverse=(challenge_type == CHALLENGE_TYPE_SLOWEST_QUERY))
-            submissions = sorted(submissions, key=lambda k: k['timestamp'], reverse=False)
+            submissions = sorted(submissions, key=lambda k: k['is_correct'], reverse=True)
             submissions = [dict(s, **{'rank': i}) for i, s in enumerate(submissions)]
             return make_response(jsonify(submissions), 200)
         except (Exception, Error) as error:
