@@ -3,15 +3,17 @@ import uuid
 import jwt
 from datetime import datetime, timezone, timedelta
 from celery.utils.log import get_task_logger
+from abc import ABC
 
 from flask import Flask, request, jsonify, session, make_response
 from flask_restful import reqparse, Resource, Api, abort
 from psycopg2 import Error
 from celery import Celery
-from db_client import get_db_connection, execute_query, validate_sql_syntax
-from util import RetryableError, BenchMarkTask, process_error, NonRetryableError
+from db_client import *
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
+from psycopg2 import ProgrammingError
+from psycopg2.errors import ReadOnlySqlTransaction, IntegrityError, InvalidTextRepresentation
 
 # create readonly user or grant only select permission for executing benchmarking queries to avoid injection
 # write permission is given to admin users like the professor or TAs
@@ -37,6 +39,7 @@ app.config['BENCHMARK_DB_NAME'] = os.environ.get("BENCHMARK_DB_NAME")
 app.config['BENCHMARK_TIMEOUT'] = os.environ.get("BENCHMARK_TIMEOUT")
 app.config['JWT_VALIDITY_PERIOD'] = os.environ.get("JWT_VALIDITY_PERIOD", 30)
 app.config['JWT_CONFIG'] = os.environ.get("JWT_CONFIG")  # POST_ONLY OR ALL
+app.config['BENCHMARK_ROUNDS'] = os.environ.get("BENCHMARK_ROUNDS", 10)
 
 CHALLENGE_TYPE_SLOWEST_QUERY = 1
 
@@ -78,7 +81,8 @@ def token_required(func):
     # decorator factory which invokes update_wrapper() method and passes decorated function as an argument
     @wraps(func)
     def decorated(*args, **kwargs):
-        if app.config['JWT_CONFIG'] == 'POST_ONLY' and request.method == 'GET':
+        if app.config['JWT_CONFIG'] == 'DISABLED' or (
+                app.config['JWT_CONFIG'] == 'POST_ONLY' and request.method == 'GET'):
             return func(*args, **kwargs)
         token = request.headers.get('token')
         user_name = request.headers.get('user')
@@ -99,14 +103,73 @@ def token_required(func):
 
 def check_admin(user_name: str):
     admin_query = 'SELECT is_admin FROM users WHERE user_name = %s'
-    conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                             user=app.config.get('APP_DB_USER'), password=app.config.get('APP_DB_PASSWORD'),
-                             port=app.config.get('APP_DB_PORT'))
+    conn = get_app_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
+                                 user=app.config.get('APP_DB_USER'), password=app.config.get('APP_DB_PASSWORD'),
+                                 port=app.config.get('APP_DB_PORT'))
     cur = execute_query(db_conn=conn, query=admin_query, values=(user_name,))
     is_admin = cur.fetchone()
     cur.close()
     conn.close()
     return False if not is_admin else is_admin[0]
+
+
+class BenchMarkTask(celery.Task, ABC):
+
+    def on_retry(self, exc, task_id, args, kwargs, einfo):
+        # exc (Exception) - The exception raised by the task.
+        # args (Tuple) - Original arguments for the task that failed.
+        # kwargs (Dict) - Original keyword arguments for the task that failed.
+        try:
+            count = self.helper(exc, kwargs)
+            print(
+                f"{count} records successfully updated for submission table on benchmarking retry, task id: {task_id}")
+        except (Exception, Error) as error:
+            print(f'Update benchmark result failed on retry, error: {error}, task id: {task_id}')
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        # exc (Exception) - The exception raised by the task.
+        # args (Tuple) - Original arguments for the task that failed.
+        # kwargs (Dict) - Original keyword arguments for the task that failed.
+        try:
+            count = self.helper(exc, kwargs)
+            print(
+                f"{count} records successfully updated for submission table on benchmarking failure, task id: {task_id}")
+        except (Exception, Error) as error:
+            print(f'Update benchmark result failed on failure, error: {error}, task id: {task_id}')
+
+    def helper(self, exc, kwargs):
+        dt = datetime.now(timezone.utc)
+        conn = get_app_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config['APP_DB_NAME'],
+                                     user=app.config.get('APP_DB_USER'), password=app.config.get('APP_DB_PASSWORD'),
+                                     port=app.config.get('APP_DB_PORT'))
+        error_message = str(exc)
+        cur = execute_query(db_conn=conn,
+                            query=f"UPDATE submission SET updated_at = %s, error_message = %s, retry_times = retry_times + 1 WHERE submission_id = %s",
+                            values=(dt, error_message, kwargs.get('submission_id')))
+        count = cur.rowcount
+        cur.close()
+        conn.close()
+        return count
+
+
+def process_error(e):
+    if isinstance(e, ProgrammingError) or isinstance(e, ReadOnlySqlTransaction) or \
+            isinstance(e, IntegrityError) or isinstance(e, InvalidTextRepresentation):
+        return NonRetryableError(e)
+    else:
+        return RetryableError(e)
+
+
+class TaskError(Exception):
+    pass
+
+
+class RetryableError(TaskError):
+    pass
+
+
+class NonRetryableError(TaskError):
+    pass
 
 
 class Login(Resource):
@@ -118,10 +181,10 @@ class Login(Resource):
         # to generate the hashed password, use generate_password_hash(<password str>, method='sha256')
 
         try:
-            conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config['APP_DB_NAME'],
-                                     user=app.config.get('APP_DB_USER'), password=app.config.get('APP_DB_PASSWORD'),
-                                     port=app.config.get('APP_DB_PORT'),
-                                     readonly=True)
+            conn = get_app_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config['APP_DB_NAME'],
+                                         user=app.config.get('APP_DB_USER'), password=app.config.get('APP_DB_PASSWORD'),
+                                         port=app.config.get('APP_DB_PORT'),
+                                         readonly=True)
             cur = execute_query(db_conn=conn, query='SELECT * FROM users WHERE user_name = %s ',
                                 values=(user_name,))
 
@@ -150,28 +213,29 @@ class Login(Resource):
              max_retries=10, base=BenchMarkTask)
 def benchmark_query(baseline_query: str, query: str, submission_id):
     try:
-        conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                 user='read_user',
-                                 password='read_user',
-                                 port=app.config.get('BENCHMARK_DB_PORT'),
-                                 timeout=app.config.get('BENCHMARK_TIMEOUT'), readonly=True)
+        conn = get_benchmark_db_connection(host=app.config.get('BENCHMARK_DB_HOST'),
+                                           database=app.config.get('BENCHMARK_DB_NAME'),
+                                           user=app.config.get('BENCHMARK_DB_USER'),
+                                           password=app.config.get('BENCHMARK_DB_PASSWORD'),
+                                           port=app.config.get('BENCHMARK_DB_PORT'),
+                                           timeout=app.config.get('BENCHMARK_TIMEOUT'), readonly=True)
         cur = execute_query(db_conn=conn, query=f"EXPLAIN ANALYZE {query}")
         explain_result = cur.fetchall()
-        logger.info(f'Benchmark result, {explain_result[-2][0]}, {explain_result[-1][0]}')
+        logger.info(f'Benchmark test run result, {explain_result[-2][0]}, {explain_result[-1][0]}')
         cur.close()
         conn.close()
     except (Exception, Error) as error:
-        logger.warning(f'Benchmark query failed, error: {error}')
+        logger.warning(f'Benchmark test run failed, error: {error}')
         if 'canceling statement due to statement timeout' in str(error):
             logger.warning(
-                f'Benchmark result maximum total time {app.config.get("BENCHMARK_TIMEOUT")}ms for planning and execution reached')
+                f'Benchmark result maximum total time {app.config.get("BENCHMARK_TIMEOUT")} ms for planning and execution reached')
             # still update on timeout
             try:
                 dt = datetime.now(timezone.utc)
-                conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                         user=app.config.get('APP_DB_USER'),
-                                         port=app.config.get('APP_DB_PORT'),
-                                         password=app.config.get('APP_DB_PASSWORD'))
+                conn = get_app_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
+                                             user=app.config.get('APP_DB_USER'),
+                                             port=app.config.get('APP_DB_PORT'),
+                                             password=app.config.get('APP_DB_PASSWORD'))
                 cur = execute_query(db_conn=conn,
                                     query="UPDATE submission SET updated_at = %s, error_message = 'query timeout' WHERE submission_id = %s",
                                     values=(dt, submission_id))
@@ -188,11 +252,12 @@ def benchmark_query(baseline_query: str, query: str, submission_id):
 
     try:
         diff_query = DIFF_QUERY_TEMPLATE.format(baseline_query, query, query, baseline_query)
-        conn = get_db_connection(host=app.config.get('BENCHMARK_DB_HOST'), database=app.config.get('BENCHMARK_DB_NAME'),
-                                 user=app.config.get('BENCHMARK_DB_USER'),
-                                 password=app.config.get('BENCHMARK_DB_PASSWORD'),
-                                 port=app.config.get('BENCHMARK_DB_PORT'),
-                                 timeout=app.config.get('BENCHMARK_TIMEOUT') * 2, readonly=True)
+        conn = get_benchmark_db_connection(host=app.config.get('BENCHMARK_DB_HOST'),
+                                           database=app.config.get('BENCHMARK_DB_NAME'),
+                                           user=app.config.get('BENCHMARK_DB_USER'),
+                                           password=app.config.get('BENCHMARK_DB_PASSWORD'),
+                                           port=app.config.get('BENCHMARK_DB_PORT'),
+                                           readonly=True)
         cur = execute_query(db_conn=conn, query=diff_query)
         result = cur.fetchall()[0][0]
         cur.close()
@@ -203,18 +268,44 @@ def benchmark_query(baseline_query: str, query: str, submission_id):
         logger.warning(f'Benchmark diff query failed, error: {error}')
         raise process_error(error)
 
+    total_planning_time = 0.0
+    total_execution_time = 0.0
+    rounds = int(app.config["BENCHMARK_ROUNDS"])
+    logger.info(f'Benchmark for {rounds} rounds')
+    for i in range(rounds):
+        try:
+            conn_i = get_benchmark_db_connection(host=app.config.get('APP_DB_HOST'),
+                                                 database=app.config.get('APP_DB_NAME'),
+                                                 user=app.config.get('BENCHMARK_DB_USER'),
+                                                 password=app.config.get('BENCHMARK_DB_PASSWORD'),
+                                                 port=app.config.get('BENCHMARK_DB_PORT'),
+                                                 readonly=True)
+            cur_i = execute_query(db_conn=conn_i, query=f"EXPLAIN ANALYZE {query}")
+            explain_result_i = cur_i.fetchall()
+            logger.info(f'Benchmark run {i + 1}, {explain_result_i[-2][0]}, {explain_result_i[-1][0]}')
+            cur_i.close()
+            conn_i.close()
+            total_planning_time += float(explain_result[-2][0].replace('Planning Time: ', '').replace(' ms', ''))
+            total_execution_time += float(explain_result_i[-1][0].replace('Execution Time: ', '').replace(' ms', ''))
+        except (Exception, Error) as error:
+            logger.warning(f'Benchmark run {i + 1} failed, error: {error}')
+            raise process_error(error)
+
     is_correct = result == 'Same'
     dt = datetime.now(timezone.utc)
-    planning_time = float(explain_result[-2][0].replace('Planning Time: ', '').replace(' ms', ''))
-    execution_time = float(explain_result[-1][0].replace('Execution Time: ', '').replace(' ms', ''))
-    total_time = planning_time + execution_time
+    avg_planning_time = total_planning_time / rounds
+    avg_execution_time = total_execution_time / rounds
+    avg_total_time = avg_planning_time + avg_execution_time
+    logger.info(
+        f'Benchmark average planning time: {avg_planning_time} ms, average execution time: {avg_execution_time} ms, average total time: {avg_total_time} ms')
     try:
-        conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                 port=app.config.get('APP_DB_PORT'),
-                                 user=app.config.get('APP_DB_USER'), password=app.config.get('APP_DB_PASSWORD'))
+        conn = get_app_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
+                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
+                                     password=app.config.get('APP_DB_PASSWORD'))
         cur = execute_query(db_conn=conn,
                             query='UPDATE submission SET is_correct = %s, updated_at = %s, planning_time = %s, execution_time = %s, total_time = %s WHERE submission_id = %s',
-                            values=(is_correct, dt, planning_time, execution_time, total_time, submission_id))
+                            values=(
+                                is_correct, dt, avg_planning_time, avg_execution_time, avg_total_time, submission_id))
         count = cur.rowcount
         cur.close()
         conn.close()
@@ -269,9 +360,9 @@ class SubmissionList(Resource):
                         'FROM submission s join challenge c on s.challenge_id = c.challenge_id ' \
                         'WHERE s.challenge_id = %s'
                 values = (challenge_id,)
-            conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
-                                     password=app.config.get('APP_DB_PASSWORD'), readonly=True)
+            conn = get_app_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
+                                         user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
+                                         password=app.config.get('APP_DB_PASSWORD'), readonly=True)
             cur = execute_query(db_conn=conn, query=query, values=values)
             submission_list = cur.fetchall()
             cur.close()
@@ -317,9 +408,9 @@ class SubmissionList(Resource):
         # challenge id must be valid, i.e. a challenge with this id must exist
         try:
             # challenge id must be valid, i.e. a challenge with this id must exist
-            conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
-                                     password=app.config.get('APP_DB_PASSWORD'))
+            conn = get_app_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
+                                         user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
+                                         password=app.config.get('APP_DB_PASSWORD'))
             cur = execute_query(db_conn=conn, query='SELECT * FROM challenge WHERE challenge_id = %s',
                                 values=(challenge_id,))
             challenge = cur.fetchone()
@@ -337,9 +428,9 @@ class SubmissionList(Resource):
             submission_id = 'sub_' + str(uuid.uuid4())
             prepared_query = """ INSERT INTO submission (submission_id, user_name, created_at, updated_at, challenge_id, sql_query) VALUES (%s, %s, %s, %s, %s, %s)"""
             record = (submission_id, name, dt, dt, challenge_id, query)
-            conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
-                                     password=app.config.get('APP_DB_PASSWORD'))
+            conn = get_app_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
+                                         user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
+                                         password=app.config.get('APP_DB_PASSWORD'))
             cur = execute_query(db_conn=conn, query=prepared_query, values=record)
             count = cur.rowcount
             print(f"{count} records inserted successfully into submission table")
@@ -358,9 +449,9 @@ class Submission(Resource):
     @token_required
     def get(self, submission_id):
         try:
-            conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
-                                     password=app.config.get('APP_DB_PASSWORD'), readonly=True)
+            conn = get_app_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
+                                         user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
+                                         password=app.config.get('APP_DB_PASSWORD'), readonly=True)
             query = 'SELECT s.user_name AS user_name, s.sql_query AS sql_query, s.submission_id AS submission_id, ' \
                     'c.challenge_name AS challenge_name, c.challenge_type AS challenge_type, ' \
                     'c.description AS description, s.created_at AS created_at, s.challenge_id AS challenge_id, ' \
@@ -402,9 +493,9 @@ class ChallengeList(Resource):
         args = challenge_list_parser.parse_args()
         user_name = args['user_name']
         try:
-            conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
-                                     password=app.config.get('APP_DB_PASSWORD'), readonly=True)
+            conn = get_app_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
+                                         user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
+                                         password=app.config.get('APP_DB_PASSWORD'), readonly=True)
             base_query = 'SELECT c1.user_name as user_name, c1.sql_query as sql_query, ' \
                          'c1.challenge_name as challenge_name, c1.description as challenge_description, ' \
                          'c2.description as challenge_type_description, c1.challenge_type as challenge_type, ' \
@@ -457,9 +548,9 @@ class ChallengeList(Resource):
             challenge_id = 'ch_' + str(uuid.uuid4())
             prepared_query = """ INSERT INTO challenge (user_name, created_at, updated_at, challenge_id, challenge_name, challenge_type, description, sql_query) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
             record = (name, dt, dt, challenge_id, challenge_name, challenge_type, challenge_description, query)
-            conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
-                                     password=app.config.get('APP_DB_PASSWORD'))
+            conn = get_app_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
+                                         user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
+                                         password=app.config.get('APP_DB_PASSWORD'))
             cur = execute_query(db_conn=conn, query=prepared_query, values=record)
             count = cur.rowcount
             print(f"{count} records inserted successfully into challenge table")
@@ -478,9 +569,9 @@ class Challenge(Resource):
     @token_required
     def get(self, challenge_id):
         try:
-            conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
-                                     password=app.config.get('APP_DB_PASSWORD'), readonly=True)
+            conn = get_app_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
+                                         user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
+                                         password=app.config.get('APP_DB_PASSWORD'), readonly=True)
             query = 'SELECT c1.user_name as user_name, c1.sql_query as sql_query, ' \
                     'c1.challenge_name as challenge_name, c1.description as challenge_description, ' \
                     'c2.description as challenge_type_description, c1.challenge_type as challenge_type, ' \
@@ -510,10 +601,10 @@ class Challenge(Resource):
     def delete(self, challenge_id):
         try:
             dt = datetime.now(timezone.utc)
-            conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'),
-                                     port=app.config.get('APP_DB_PORT'),
-                                     password=app.config.get('APP_DB_PASSWORD'))
+            conn = get_app_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
+                                         user=app.config.get('APP_DB_USER'),
+                                         port=app.config.get('APP_DB_PORT'),
+                                         password=app.config.get('APP_DB_PASSWORD'))
             cur = execute_query(db_conn=conn,
                                 query="UPDATE challenge SET updated_at = %s, is_deleted = %s WHERE challenge_id = %s",
                                 values=(dt, True, challenge_id))
@@ -531,9 +622,9 @@ class ChallengeTypeList(Resource):
     @token_required
     def get(self):
         try:
-            conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
-                                     password=app.config.get('APP_DB_PASSWORD'), readonly=True)
+            conn = get_app_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
+                                         user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
+                                         password=app.config.get('APP_DB_PASSWORD'), readonly=True)
             cur = execute_query(db_conn=conn, query='SELECT * FROM challenge_type')
             challenge_type_list = cur.fetchall()
             cur.close()
@@ -568,9 +659,9 @@ class ChallengeTypeList(Resource):
             dt = datetime.now(timezone.utc)
             prepared_query = """ INSERT INTO challenge_type (user_name, created_at, updated_at, challenge_type, description) VALUES (%s, %s, %s, %s, %s)"""
             record = (name, dt, dt, challenge_type, description)
-            conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
-                                     password=app.config.get('APP_DB_PASSWORD'))
+            conn = get_app_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
+                                         user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
+                                         password=app.config.get('APP_DB_PASSWORD'))
             cur = execute_query(db_conn=conn, query=prepared_query, values=record)
             count = cur.rowcount
             print(f"{count} records inserted successfully into challenge type table")
@@ -588,9 +679,9 @@ class ChallengeType(Resource):
     @token_required
     def get(self, challenge_type):
         try:
-            conn = get_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
-                                     user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
-                                     password=app.config.get('APP_DB_PASSWORD'), readonly=True)
+            conn = get_app_db_connection(host=app.config.get('APP_DB_HOST'), database=app.config.get('APP_DB_NAME'),
+                                         user=app.config.get('APP_DB_USER'), port=app.config.get('APP_DB_PORT'),
+                                         password=app.config.get('APP_DB_PASSWORD'), readonly=True)
             cur = execute_query(db_conn=conn, query='SELECT * FROM challenge_type WHERE challenge_type = %s',
                                 values=(challenge_type,))
             record = cur.fetchone()

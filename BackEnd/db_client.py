@@ -4,8 +4,8 @@ import psycopg2.extras
 import sqlvalidator
 
 
-def get_db_connection(host: str, database: str, user: str, password: str, port: int, timeout: int = 5000,
-                      readonly: bool = False, autocommit: bool = True):
+def get_app_db_connection(host: str, database: str, user: str, password: str, port: int, timeout: int = 5000,
+                          readonly: bool = False, autocommit: bool = True):
     options = f'-c statement_timeout={timeout}'
     conn = psycopg2.connect(host=host,
                             database=database,
@@ -13,6 +13,23 @@ def get_db_connection(host: str, database: str, user: str, password: str, port: 
                             user=user,
                             password=password, options=options)
     conn.set_session(readonly=readonly, autocommit=autocommit)
+    return conn
+
+
+def get_benchmark_db_connection(host: str, database: str, user: str, password: str, port: int, timeout: int = 0,
+                                readonly: bool = True):
+    conn = psycopg2.connect(host=host,
+                            database=database,
+                            port=port,
+                            user=user,
+                            password=password,
+                            options=f'-c statement_timeout={timeout}') if timeout \
+        else psycopg2.connect(host=host,
+                              database=database,
+                              port=port,
+                              user=user,
+                              password=password)
+    conn.set_session(readonly=readonly)
     return conn
 
 

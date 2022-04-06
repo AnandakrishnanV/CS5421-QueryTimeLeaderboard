@@ -61,7 +61,7 @@
 
 ## Authentication
 The web application is invitation based so no sign up mechanism is provided as of now. Intended users will be given their login credentials in a secured manner.
-Login is required for API access as specified by the environment variable `JWT_CONFIG`. Two modes are currently supported, namely `ALL`, `POST_ONLY`. Note that resource mutating requests including `PUT`, `DELETE` are also regarded as `POST` requests. Upon successful login, a JSON Web Token with 30 minutes of validity period will be returned. Subsequent requests must carry the same JWT in request headers named `TOKEN`. Meanwhile, `USER` must be set for all request headers for cross validation.
+Login is required for API access as specified by the environment variable `JWT_CONFIG`. Two modes are currently supported, namely `ALL`, `POST_ONLY`, `DISABLED`. Note that resource mutating requests including `PUT`, `DELETE` are also regarded as `POST` requests. Upon successful login, a JSON Web Token with 30 minutes of validity period will be returned. Subsequent requests must carry the same JWT in request headers named `TOKEN`. Meanwhile, `USER` must be set for all request headers for cross validation.
 ### Examples
 `curl -X POST -H "Content-Type: application/json" -H "TOKEN: xxx" -H "USER: xxx"\
     -d '{"query": "select * from items", "challenge_id": "ch_3865812a-906f-46bd-8ff6-6e76e48cec6f", "user_name": "test"}' \
