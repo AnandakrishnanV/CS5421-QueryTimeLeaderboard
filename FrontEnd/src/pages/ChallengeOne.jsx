@@ -2,14 +2,18 @@ import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import QueryForm from "../components/QueryForm/QueryForm";
 import ChallengeTable from "../components/Table/ChallengeTable";
-import PageModal from "./PageModal";
 import axios from "axios";
 import "./ChallengeOne.css";
-import { Card } from "react-bootstrap";
+import { Card, Button } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
 
 const ChallengeOnePage = (props) => {
+  let nav = useNavigate();
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [ifError, setIfError] = useState(false);
+  const [ifAdmin, setifAdmin] = useState(false);
+  const [ifCreated, setifCreated] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
   const { state } = useLocation();
@@ -28,7 +32,8 @@ const ChallengeOnePage = (props) => {
     if (isLoggedIn) {
       sendRequestToServer(entryData);
     } else {
-      //login
+      let path = "/studentcentre";
+      nav(path, {});
     }
   };
 
@@ -45,16 +50,23 @@ const ChallengeOnePage = (props) => {
     const res = await axios
       .post("http://127.0.0.1:5000/submissions", data, config)
       .then((response) => {
-        console.log(response);
+        //console.log(response);
+        if (response.statusText && response.statusText === "CREATED") {
+          setifCreated(true);
+          setTimeout(() => {
+            setifCreated(false);
+          }, 3000);
+        }
       })
       .catch((err) => {
         setIfError(true);
-        console.log(err.response.data.message);
         setErrorMsg(err.response.data.message);
       });
   };
 
   const checkLogin = () => {
+    //console.log(state);
+
     let current_time = Date.now() / 1000;
 
     if (current_time - state.token_timestamp >= 600) {
@@ -62,9 +74,29 @@ const ChallengeOnePage = (props) => {
     } else {
       setIsLoggedIn(true);
     }
+
+    if (state.from && state.from === "control-centre") {
+      setifAdmin(true);
+    }
   };
 
-  const renderWarningMessage = (msg) => {
+  const inactivateChallenge = async () => {
+    let config = {
+      headers: {
+        user: localStorage.getItem("tt_user"),
+        token: localStorage.getItem("tt_token"),
+      },
+    };
+    let deleteURL =
+      "http://127.0.0.1:5000/challenge/" + state.challenge.challenge_id;
+    const res = await axios.delete(deleteURL, config).then((response) => {
+      let path = "/controlCentre";
+      nav(path, {});
+    });
+    //console.log(res);
+  };
+
+  const renderWarningMessage = () => {
     if (ifError) {
       return (
         <div>
@@ -76,8 +108,45 @@ const ChallengeOnePage = (props) => {
           </Card>
         </div>
       );
-    } else {
-      return <div></div>;
+    } else if (ifCreated) {
+      return (
+        <div>
+          <Card className="error-card">
+            <Card.Header as="h5">Created</Card.Header>
+            <Card.Body>
+              <Card.Text>
+                Your entry has been submitted. The entry will upadated one the
+                processing is Complete.
+              </Card.Text>
+            </Card.Body>
+          </Card>
+        </div>
+      );
+    }
+  };
+
+  const renderDeletionBox = () => {
+    if (ifAdmin && !state.challenge.is_deleted) {
+      return (
+        <div>
+          <Card className="error-card text-center">
+            <Card.Header as="h5">Set This Challenge as Inactive</Card.Header>
+            <Card.Body>
+              <Button onClick={inactivateChallenge}>Inactivate</Button>
+            </Card.Body>
+          </Card>
+        </div>
+      );
+    } else if (ifAdmin) {
+      return (
+        <div>
+          <Card className="error-card text-center">
+            <Card.Body>
+              <h5>This challenge is already set as Inactive</h5>
+            </Card.Body>
+          </Card>
+        </div>
+      );
     }
   };
 
@@ -103,6 +172,7 @@ const ChallengeOnePage = (props) => {
       </div>
       <QueryForm onSaveQueryData={saveEntryDataHandler} />
       {renderWarningMessage()}
+      {renderDeletionBox()}
     </div>
   );
 };

@@ -23,17 +23,17 @@ const StudentCentre = () => {
 
   let nav = useNavigate();
 
-  const handleRowClick = (event) => {
-    // console.log(event.target.parentElement.firstChild.textContent);
-    // let clickId = event.target.parentElement.firstChild.textContent;
-    // var challenge = null;
-    // // challengeData.filter((obj) => {
-    // //   return obj.challenge_id === clickId;
-    // // });
-    // console.log(challenge);
-    // let path = "/studentsubmissions";
-    // nav(path, { state: challenge[0] });
-  };
+  // const handleRowClick = (event) => {
+  //   // console.log(event.target.parentElement.firstChild.textContent);
+  //   // let clickId = event.target.parentElement.firstChild.textContent;
+  //   // var challenge = null;
+  //   // // challengeData.filter((obj) => {
+  //   // //   return obj.challenge_id === clickId;
+  //   // // });
+  //   // console.log(challenge);
+  //   // let path = "/studentsubmissions";
+  //   // nav(path, { state: challenge[0] });
+  // };
 
   const submitHandler = (event) => {
     event.preventDefault(); //to stop req sent to anywhere, prompting refresh
@@ -50,7 +50,7 @@ const StudentCentre = () => {
   };
 
   const fetchToken = async (data) => {
-    console.log(data);
+    //console.log(data);
     const res = await axios
       .post("http://127.0.0.1:5000/login", {
         user_name: data.user_name,
@@ -60,7 +60,7 @@ const StudentCentre = () => {
 
     if (res) {
       const token = res.data.token;
-      console.log(token);
+      //console.log(token);
       setToken(token);
       localStorage.setItem("user", inpUserName);
       localStorage.setItem("token", token);
@@ -71,7 +71,7 @@ const StudentCentre = () => {
   };
 
   const fetchSubmissionData = async (data) => {
-    console.log(data);
+    //console.log(data);
 
     const res = await axios
       .get("http://127.0.0.1:5000/submissions", {
@@ -94,7 +94,6 @@ const StudentCentre = () => {
   };
 
   useEffect(() => {
-    console.log(JSON.parse(localStorage.getItem("submission_data")));
 
     if (
       Date.now() / 1000 - localStorage.getItem("token_timestamp") <= 600 &&

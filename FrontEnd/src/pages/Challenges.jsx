@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Table } from "react-bootstrap";
 import "./Challenges.css";
 import axios from "axios";
 import { C_COL } from "../components/challengeColumns";
@@ -8,11 +7,12 @@ import {
   useSortBy,
   useGlobalFilter,
   useFilters,
+  initialState,
 } from "react-table/dist/react-table.development";
 
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
-const Challenges = () => {
+const Challenges = (props) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [chalData, setChalData] = useState([]);
 
@@ -21,19 +21,18 @@ const Challenges = () => {
     checkLogin();
 
     if (isLoggedIn) {
-      console.log(event.target.parentElement.firstChild.textContent);
+      //console.log(event.target.parentElement.firstChild.textContent);
       let clickId = event.target.parentElement.firstChild.textContent;
-      console.log(chalData)
+      //console.log(chalData);
       var challenge = chalData.filter((obj) => {
         return obj.challenge_no == clickId;
       });
-      console.log(challenge);
+      //console.log(challenge);
 
       fetchLadder(challenge[0]);
     } else {
       let path = "/studentcentre";
       nav(path, {});
-      console.log("hi");
     }
   };
 
@@ -50,7 +49,7 @@ const Challenges = () => {
       .get("http://127.0.0.1:5000/submissions", config)
       .then((response) => {
         let queries = response.data;
-        console.log(queries);
+        //console.log(queries);
 
         queries.map((item) => {
           //setting rank and rounding time
@@ -68,6 +67,7 @@ const Challenges = () => {
           user: localStorage.getItem("user"),
           token: localStorage.getItem("token"),
           token_timestamp: localStorage.getItem("token_timestamp"),
+          from: props.from ? props.from : null,
         };
 
         let path = "/challengeOne";
@@ -80,7 +80,7 @@ const Challenges = () => {
       let token_time = localStorage.getItem("token_timestamp");
       let current_time = Date.now() / 1000;
 
-      if (current_time - token_time >= 600) {
+      if (current_time - token_time >= 1200) {
         setIsLoggedIn(false);
       } else {
         setIsLoggedIn(true);
@@ -88,7 +88,6 @@ const Challenges = () => {
     }
   };
 
- 
   const fetchChalData = async () => {
     const res = await axios
       .get(" http://127.0.0.1:5000/challenges")
@@ -96,15 +95,27 @@ const Challenges = () => {
 
     if (res) {
       const data = res.data;
-      console.log(data);
-      data.forEach((item, index) => (item.challenge_no = index + 1));
+      data.forEach((item, index) => {
+        item.challenge_no = index + 1;
+        if (item.is_deleted) {
+          item.challenge_state = "Inactive";
+        } else {
+          item.challenge_state = "Active";
+        }
+      });
+
+      let table_data = data
+
+      if (!props.from) {
+        table_data = data.filter(item => item.is_deleted != true)
+      }
 
       setChalData(
-        data.map((item) => ({
+        table_data.map((item) => ({
           ...item,
         }))
       );
-      console.log(chalData);
+      //console.log(chalData);
     }
   };
   useEffect(() => {
@@ -114,7 +125,7 @@ const Challenges = () => {
 
   const columns = useMemo(() => C_COL, []);
   const challengeData = useMemo(() => [...chalData], [chalData]);
-  console.log(challengeData);
+  //console.log(challengeData);
 
   const tableInstance = useTable(
     {

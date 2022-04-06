@@ -15,5 +15,10 @@ export const C_COL = [
     {
         Header: "Date",
         accessor: 'timestamp'
+    },
+    {
+        Header: "Challenge State",
+        accessor:'challenge_state',
+        show: false
     }
 ]

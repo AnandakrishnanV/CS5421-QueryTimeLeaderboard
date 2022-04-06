@@ -1,12 +1,14 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Form, Button } from "react-bootstrap";
 import Challenges from "./Challenges";
 import axios from "axios";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 
 import "./ControlCentre.css";
 
 const ControlCentre = (props) => {
-  const actualPassHash = "teachteampass";
+  let nav = useNavigate();
+
   const [inpChallenge, setInpChallenge] = useState("");
   const [inpChallengeName, setInpChallengeName] = useState("");
   const [inpChallengeRes, setInpChallengeRes] = useState("");
@@ -42,15 +44,17 @@ const ControlCentre = (props) => {
       },
     };
 
-    console.log(data);
-    console.log(config);
+    //console.log(data);
+    //console.log(config);
 
-    const res = await axios.post(
-      "http://127.0.0.1:5000/challenges",
-      data,
-      config
-    );
-    console.log(res);
+    const res = await axios
+      .post("http://127.0.0.1:5000/challenges", data, config)
+      .then((response) => {
+       if(response.statusText === 'CREATED') {
+         window.location.reload(false);
+       }
+      });
+    //console.log(res);
   };
 
   const chalTypeChangeHandler = (event) => {
@@ -72,7 +76,7 @@ const ControlCentre = (props) => {
   const submitPassHandler = async (event) => {
     event.preventDefault();
 
-    console.log("here");
+    //console.log("here");
 
     const req = await axios
       .post("http://127.0.0.1:5000/login", {
@@ -80,12 +84,12 @@ const ControlCentre = (props) => {
         password: inpPass,
       })
       .then((response) => {
-        console.log(response.data);
+        //console.log(response.data);
 
         if (response.data.is_admin) {
           localStorage.setItem("tt_user", inpUserName);
           localStorage.setItem("tt_token", response.data.token);
-          localStorage.setItem("tt_token_timestamp", Date.now());
+          localStorage.setItem("token_timestamp", Date.now());
 
           setIfPass(true);
         }
@@ -95,6 +99,18 @@ const ControlCentre = (props) => {
     setPass("");
   };
 
+  const checkLogin = () => {
+    if (
+      Date.now() / 1000 - localStorage.getItem("token_timestamp") <= 1200 &&
+      localStorage.getItem("tt_token") &&
+      localStorage.getItem("tt_token") !== null
+    ) {
+      setIfPass(true);
+    } else {
+      setIfPass(false);
+    }
+  };
+
   const passChangeHandler = (event) => {
     setPass(event.target.value);
   };
@@ -102,6 +118,10 @@ const ControlCentre = (props) => {
   const userNameChangeHandler = (event) => {
     setInpUserName(event.target.value);
   };
+
+  useEffect(() => {
+    checkLogin();
+  });
 
   if (!ifPassCorrect) {
     return (
@@ -134,7 +154,7 @@ const ControlCentre = (props) => {
   } else {
     return (
       <div>
-        <Challenges></Challenges>
+        <Challenges from="control-centre"></Challenges>
         <div className="challenge-forms">
           <Form
             className="cc-pass-form challenge-form"
@@ -144,7 +164,7 @@ const ControlCentre = (props) => {
             <Form.Group className="mb-3">
               <h3>Add New Challenge</h3>
               <Form.Label>Select Challenge Type</Form.Label>
-              <Form.Select onChange={chalTypeChangeHandler}>
+              <Form.Select onChange={chalTypeChangeHandler} value={inpChallengeType}>
                 <option value="1">Slowest Query</option>
                 <option value="2">Fastest Query</option>
               </Form.Select>

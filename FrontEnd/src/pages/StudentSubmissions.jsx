@@ -1,6 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Form, Button } from "react-bootstrap";
-import axios from "axios";
 import { Sub_Col } from "../components/Table/Columns/SubmissionColumns";
 import {
   useTable,
@@ -11,7 +9,7 @@ import {
 
 import { useLocation } from "react-router-dom";
 
-import { Link, Navigate, useNavigate } from "react-router-dom";
+//import { Link, Navigate, useNavigate } from "react-router-dom";
 
 import "./StudentSubmissions.css";
 
@@ -19,7 +17,7 @@ import "./StudentSubmissions.css";
 
 const StudentSubmissions = (props) => {
   const { state } = useLocation();
-  console.log(state);
+  //console.log(state);
 
   const handleRowClick = () => {};
 
@@ -58,7 +56,7 @@ const StudentSubmissions = (props) => {
           ...item,
         }))
       );
-      console.log(subData);
+      //console.log(subData);
     }
   };
   useEffect(() => {
@@ -67,7 +65,7 @@ const StudentSubmissions = (props) => {
 
   const columns = useMemo(() => Sub_Col, []);
   const submissionData = useMemo(() => [...subData], [subData]);
-  console.log(submissionData);
+  //console.log(submissionData);
 
   const tableInstance = useTable(
     {
