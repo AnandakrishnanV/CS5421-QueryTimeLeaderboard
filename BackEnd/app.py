@@ -27,19 +27,19 @@ app.config['celery_result_backend'] = os.environ.get("REDIS_URL")
 
 app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY")
 app.config['APP_DB_HOST'] = os.environ.get("APP_DB_HOST")
-app.config['APP_DB_PORT'] = os.environ.get("APP_DB_PORT")
+app.config['APP_DB_PORT'] = int(os.environ.get("APP_DB_PORT"))
 app.config['APP_DB_NAME'] = os.environ.get("APP_DB_NAME")
 app.config['APP_DB_USER'] = os.environ.get("APP_DB_USER")
 app.config['APP_DB_PASSWORD'] = os.environ.get("APP_DB_PASSWORD")
 app.config['BENCHMARK_DB_HOST'] = os.environ.get("BENCHMARK_DB_HOST")
-app.config['BENCHMARK_DB_PORT'] = os.environ.get("BENCHMARK_DB_PORT")
+app.config['BENCHMARK_DB_PORT'] = int(os.environ.get("BENCHMARK_DB_PORT"))
 app.config['BENCHMARK_DB_USER'] = os.environ.get("BENCHMARK_DB_USER")
 app.config['BENCHMARK_DB_PASSWORD'] = os.environ.get("BENCHMARK_DB_PASSWORD")
 app.config['BENCHMARK_DB_NAME'] = os.environ.get("BENCHMARK_DB_NAME")
-app.config['BENCHMARK_TIMEOUT'] = os.environ.get("BENCHMARK_TIMEOUT")
-app.config['JWT_VALIDITY_PERIOD'] = os.environ.get("JWT_VALIDITY_PERIOD", 30)
+app.config['BENCHMARK_TIMEOUT'] = int(os.environ.get("BENCHMARK_TIMEOUT"))
+app.config['JWT_VALIDITY_PERIOD'] = int(os.environ.get("JWT_VALIDITY_PERIOD", 30))
 app.config['JWT_CONFIG'] = os.environ.get("JWT_CONFIG")  # POST_ONLY OR ALL
-app.config['BENCHMARK_ROUNDS'] = os.environ.get("BENCHMARK_ROUNDS", 10)
+app.config['BENCHMARK_ROUNDS'] = int(os.environ.get("BENCHMARK_ROUNDS", 10))
 
 CHALLENGE_TYPE_SLOWEST_QUERY = 1
 
@@ -270,7 +270,7 @@ def benchmark_query(baseline_query: str, query: str, submission_id):
 
     total_planning_time = 0.0
     total_execution_time = 0.0
-    rounds = int(app.config["BENCHMARK_ROUNDS"])
+    rounds = app.config["BENCHMARK_ROUNDS"]
     logger.info(f'Benchmark for {rounds} rounds')
     for i in range(rounds):
         try:
