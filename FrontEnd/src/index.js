@@ -24,7 +24,7 @@ render(
       <Route path="/challengeOne" element={<ChallengeOnePage />} />
       <Route path="/StudentCentre" element={<StudentCentre />} />
       <Route path="/StudentSubmissions" element={<StudentSubmissions />} />
-      <Route path="/controlCenter" element={<ControlCentre />} />
+      <Route path="/controlCentre" element={<ControlCentre />} />
     </Routes>
   </Router>,
   rootElement
