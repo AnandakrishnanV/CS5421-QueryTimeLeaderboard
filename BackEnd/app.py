@@ -399,7 +399,8 @@ class SubmissionList(Resource):
     def post(self):
         args = submission_parser.parse_args()
         query = args['query'].replace(';', '').lower().strip()
-        if not query.startswith('select'):
+        if not query.startswith(
+                'select') or 'update' in query or "delete" in query or "truncate" in query or "drop" in query:
             return abort(400, message="Only Select Query Allowed")
         if not validate_sql_syntax(query):
             return abort(400, message="Invalid Query Syntax")
