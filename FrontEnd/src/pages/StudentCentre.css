@@ -1,5 +1,18 @@
 .login-form {
     width: 30%;
     margin: auto;
-    padding-top: 15%;
+    margin-top:200px;
+    border:2px solid black;
+    padding:10px 10px;
+    border-radius: 10px;
   }
+
+.icon{
+  width: 100px;
+  padding:20px 20px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 30%;
+  background-color: grey;
+}

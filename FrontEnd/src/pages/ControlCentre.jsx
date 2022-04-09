@@ -3,8 +3,9 @@ import { Form, Button } from "react-bootstrap";
 import Challenges from "./Challenges";
 import axios from "axios";
 import { Link, Navigate, useNavigate } from "react-router-dom";
-
 import "./ControlCentre.css";
+
+import controls from './icons/controls.png';
 
 const ControlCentre = (props) => {
   let nav = useNavigate();
@@ -127,6 +128,7 @@ const ControlCentre = (props) => {
     return (
       <div>
         <Form className="cc-pass-form login-form" onSubmit={submitPassHandler}>
+        <img className='icon' src={controls}/>
           <Form.Group className="mb-3" controlId="formUserName">
             <Form.Label>User Name</Form.Label>
             <Form.Control

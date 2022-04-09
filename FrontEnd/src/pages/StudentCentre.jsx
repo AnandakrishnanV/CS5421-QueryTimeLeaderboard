@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Form, Button } from "react-bootstrap";
 import axios from "axios";
 
+import student from './icons/student.png';
+
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
 import "./StudentCentre.css";
@@ -120,6 +122,7 @@ const StudentCentre = () => {
 
   return (
     <Form className="query-form login-form" onSubmit={submitHandler}>
+      <img className='icon' src={student}/>
       <Form.Group className="mb-3">
         <Form.Label>Student User Name</Form.Label>
         <Form.Control
