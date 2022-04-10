@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Form, Button } from "react-bootstrap";
 import axios from "axios";
 
-import student from './icons/student.png';
+import student from "./icons/student.png";
 
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
@@ -60,15 +60,16 @@ const StudentCentre = () => {
       })
       .catch((err) => console.log(err));
 
-    if (res) {
-      const token = res.data.token;
+    if (!res.statusText === "OK") {
+      setIfUserNameWrong(true);
+    } else {
       //console.log(token);
       setToken(token);
       localStorage.setItem("user", inpUserName);
       localStorage.setItem("token", token);
       localStorage.setItem("token_timestamp", Date.now() / 1000);
 
-      fetchSubmissionData(data);
+      fetchSubmissionData(data.user_name);
     }
   };
 
@@ -77,26 +78,22 @@ const StudentCentre = () => {
 
     const res = await axios
       .get("http://127.0.0.1:5000/submissions", {
-        params: { user_name: data.user_name },
+        params: { user_name: data },
       })
       .catch((err) => console.log(err));
 
     if (res) {
       const data = res.data;
-      if (!data.length) {
-        setIfUserNameWrong(true);
-      } else {
-        let state_data = { state: data };
-        localStorage.setItem("submission_data", JSON.stringify(state_data));
 
-        let path = "/studentsubmissions";
-        nav(path, state_data);
-      }
+      let state_data = { state: data };
+      localStorage.setItem("submission_data", JSON.stringify(state_data));
+
+      let path = "/studentsubmissions";
+      nav(path, state_data);
     }
   };
 
   useEffect(() => {
-
     if (
       Date.now() / 1000 - localStorage.getItem("token_timestamp") <= 600 &&
       localStorage.getItem("submission_data") &&
@@ -122,7 +119,7 @@ const StudentCentre = () => {
 
   return (
     <Form className="query-form login-form" onSubmit={submitHandler}>
-      <img className='icon' src={student}/>
+      <img className="icon" src={student} />
       <Form.Group className="mb-3">
         <Form.Label>Student User Name</Form.Label>
         <Form.Control
