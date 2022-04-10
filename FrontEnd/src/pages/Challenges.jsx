@@ -54,7 +54,9 @@ const Challenges = (props) => {
         queries.map((item) => {
           //setting rank and rounding time
           item.rank = item.rank + 1;
-          item.total_time = item.total_time.toFixed(4);
+          item.execution_time = item.execution_time.toFixed(5);
+          item.planning_time = item.planning_time.toFixed(5);
+          item.total_time = item.total_time.toFixed(5);
         });
 
         queries = queries.filter((item) => {
