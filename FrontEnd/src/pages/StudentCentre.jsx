@@ -63,6 +63,9 @@ const StudentCentre = () => {
     if (!res.statusText === "OK") {
       setIfUserNameWrong(true);
     } else {
+      console.log(res);
+
+      const token = res.data.token;
       //console.log(token);
       setToken(token);
       localStorage.setItem("user", inpUserName);
@@ -83,6 +86,7 @@ const StudentCentre = () => {
       .catch((err) => console.log(err));
 
     if (res) {
+      console.log(res);
       const data = res.data;
 
       let state_data = { state: data };
@@ -101,8 +105,7 @@ const StudentCentre = () => {
     ) {
       let dat = localStorage.getItem("submission_data");
       if (JSON.parse(dat)) {
-        let path = "/studentsubmissions";
-        nav(path, JSON.parse(localStorage.getItem("submission_data")));
+        fetchSubmissionData(localStorage.getItem("user"));
       }
     } else {
       localStorage.setItem("submission_data", JSON.stringify(null));
