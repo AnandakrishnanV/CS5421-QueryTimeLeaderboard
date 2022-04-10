@@ -74,7 +74,7 @@ login_parser = reqparse.RequestParser()
 login_parser.add_argument('user_name', type=str, required=True, help="User name cannot be blank!")
 login_parser.add_argument('password', type=str, required=True, help="Password cannot be blank!")
 
-DIFF_QUERY_TEMPLATE = '''SELECT CASE WHEN COUNT(*) = 0 THEN 'Same' ELSE 'Different' END FROM (({} EXCEPT {}) UNION ({} EXCEPT {})) AS RESULT'''
+DIFF_QUERY_TEMPLATE = '''SELECT CASE WHEN COUNT(*) = 0 THEN 'Same' ELSE 'Different' END FROM ((({}) EXCEPT ({})) UNION (({}) EXCEPT ({}))) AS RESULT'''
 
 
 def token_required(func):
