@@ -130,9 +130,9 @@ const ChallengeOnePage = (props) => {
       return (
         <div>
           <Card className="error-card text-center">
-            <Card.Header as="h5">Set This Challenge as Inactive</Card.Header>
+            <Card.Header as="h5">Deactivate This Challengee</Card.Header>
             <Card.Body>
-              <Button onClick={inactivateChallenge}>Inactivate</Button>
+              <Button onClick={inactivateChallenge}>Deactivate</Button>
             </Card.Body>
           </Card>
         </div>
@@ -142,7 +142,7 @@ const ChallengeOnePage = (props) => {
         <div>
           <Card className="error-card text-center">
             <Card.Body>
-              <h5>This challenge is already set as Inactive</h5>
+              <h5>This challenge is already Deactivated</h5>
             </Card.Body>
           </Card>
         </div>

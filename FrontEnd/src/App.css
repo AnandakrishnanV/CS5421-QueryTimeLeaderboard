@@ -1,3 +1,9 @@
 body {
   background-color: #cccccc;
   }
+
+  .text-container {
+    margin: auto;
+    margin-top: 18%;
+    width: 70%;
+  } 
