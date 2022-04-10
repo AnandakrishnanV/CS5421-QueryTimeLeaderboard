@@ -399,6 +399,7 @@ class SubmissionList(Resource):
     def post(self):
         args = submission_parser.parse_args()
         query = args['query'].replace(';', '').lower().strip()
+        query = ' '.join(query.splitlines())
         if not query.startswith(
                 'select') or 'update' in query or "delete" in query or "truncate" in query or "drop" in query:
             return abort(400, message="Only Select Query Allowed")
@@ -528,6 +529,7 @@ class ChallengeList(Resource):
     def post(self):
         args = challenge_parser.parse_args()
         query = args['query'].replace(';', '').lower().strip()
+        query = ' '.join(query.splitlines())
         challenge_name = args['challenge_name'].strip()
         challenge_type = args['challenge_type']
         challenge_description = args['challenge_description']
